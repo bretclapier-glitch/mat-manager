@@ -14,6 +14,9 @@ import Registration from "./pages/Registration";
 import Store from "./pages/Store";
 import Website from "./pages/Website";
 import Payments from "./pages/Payments";
+import PublicPrograms from "./pages/PublicPrograms";
+import PublicRegister from "./pages/PublicRegister";
+import ParentDashboard from "./pages/ParentDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +32,11 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          {/* Parent-facing routes */}
+          <Route path="/programs" element={<PublicPrograms />} />
+          <Route path="/register/:programId" element={<PublicRegister />} />
+          <Route path="/parent" element={<ParentDashboard />} />
+          {/* Admin dashboard routes */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/schedule" element={<Schedule />} />
           <Route path="/dashboard/messages" element={<Messages />} />
