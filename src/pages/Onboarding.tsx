@@ -15,6 +15,8 @@ import {
   Calendar,
   CreditCard,
   ClipboardList,
+  MessageSquare,
+  ShoppingBag,
 } from "lucide-react";
 import { OnboardingData, defaultOnboardingData } from "@/types/onboarding";
 import ClubInfoStep from "@/components/onboarding/ClubInfoStep";
@@ -26,6 +28,8 @@ import ScheduleStep from "@/components/onboarding/ScheduleStep";
 import PaymentsStep from "@/components/onboarding/PaymentsStep";
 import RegistrationStep from "@/components/onboarding/RegistrationStep";
 import BrandingStep from "@/components/onboarding/BrandingStep";
+import MessagingStep from "@/components/onboarding/MessagingStep";
+import MerchStep from "@/components/onboarding/MerchStep";
 
 interface Step {
   id: string;
@@ -43,8 +47,10 @@ const baseSteps: Step[] = [
 const featureSteps: Record<string, Step> = {
   website: { id: 'website', title: 'Website', icon: Globe },
   schedule: { id: 'schedule', title: 'Schedule', icon: Calendar },
+  messaging: { id: 'messaging', title: 'Messaging', icon: MessageSquare },
   payments: { id: 'payments', title: 'Payments', icon: CreditCard },
   registration: { id: 'registration', title: 'Registration', icon: ClipboardList },
+  merch: { id: 'merch', title: 'Merch', icon: ShoppingBag },
 };
 
 const finalStep: Step = { id: 'branding', title: 'Branding', icon: Palette };
@@ -69,7 +75,7 @@ export default function Onboarding() {
     const dynamicSteps = [...baseSteps];
     
     // Add feature-specific steps in order
-    const featureOrder = ['website', 'schedule', 'payments', 'registration'];
+    const featureOrder = ['website', 'schedule', 'messaging', 'payments', 'registration', 'merch'];
     featureOrder.forEach(feature => {
       if (onboardingData.selectedFeatures.includes(feature) && featureSteps[feature]) {
         dynamicSteps.push(featureSteps[feature]);
@@ -117,10 +123,14 @@ export default function Onboarding() {
         return <WebsiteStep data={onboardingData} onChange={handleDataChange} />;
       case 'schedule':
         return <ScheduleStep data={onboardingData} onChange={handleDataChange} />;
+      case 'messaging':
+        return <MessagingStep data={onboardingData} onChange={handleDataChange} />;
       case 'payments':
         return <PaymentsStep data={onboardingData} onChange={handleDataChange} />;
       case 'registration':
         return <RegistrationStep data={onboardingData} onChange={handleDataChange} />;
+      case 'merch':
+        return <MerchStep data={onboardingData} onChange={handleDataChange} />;
       case 'branding':
         return <BrandingStep data={onboardingData} onChange={handleDataChange} clubName={clubName} />;
       default:
