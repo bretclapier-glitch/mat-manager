@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="p-6 border-b border-sidebar-border">
             <Link to="/dashboard" className="flex items-center gap-2">
               <Trophy className="h-8 w-8 text-gold" />
-              <span className="text-xl font-display text-white">MATMASTER</span>
+              <span className="text-xl font-display text-white">HOMETEAM</span>
             </Link>
           </div>
 

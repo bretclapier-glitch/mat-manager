@@ -1,81 +1,138 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { 
   Trophy, 
   MapPin, 
-  Phone, 
-  Globe, 
-  Upload,
+  Users,
+  Palette,
+  Settings,
   ArrowRight,
   ArrowLeft,
   CheckCircle,
-  Users,
+  Globe,
   Calendar,
-  Palette
+  CreditCard,
+  ClipboardList,
 } from "lucide-react";
+import { OnboardingData, defaultOnboardingData } from "@/types/onboarding";
+import ClubInfoStep from "@/components/onboarding/ClubInfoStep";
+import LocationStep from "@/components/onboarding/LocationStep";
+import ProgramsStep from "@/components/onboarding/ProgramsStep";
+import FeaturesStep from "@/components/onboarding/FeaturesStep";
+import WebsiteStep from "@/components/onboarding/WebsiteStep";
+import ScheduleStep from "@/components/onboarding/ScheduleStep";
+import PaymentsStep from "@/components/onboarding/PaymentsStep";
+import RegistrationStep from "@/components/onboarding/RegistrationStep";
+import BrandingStep from "@/components/onboarding/BrandingStep";
 
-const steps = [
-  { id: 1, title: "Club Info", icon: Trophy },
-  { id: 2, title: "Location", icon: MapPin },
-  { id: 3, title: "Programs", icon: Users },
-  { id: 4, title: "Branding", icon: Palette },
+interface Step {
+  id: string;
+  title: string;
+  icon: React.ElementType;
+}
+
+const baseSteps: Step[] = [
+  { id: 'club-info', title: 'Club Info', icon: Trophy },
+  { id: 'location', title: 'Location', icon: MapPin },
+  { id: 'programs', title: 'Programs', icon: Users },
+  { id: 'features', title: 'Features', icon: Settings },
 ];
+
+const featureSteps: Record<string, Step> = {
+  website: { id: 'website', title: 'Website', icon: Globe },
+  schedule: { id: 'schedule', title: 'Schedule', icon: Calendar },
+  payments: { id: 'payments', title: 'Payments', icon: CreditCard },
+  registration: { id: 'registration', title: 'Registration', icon: ClipboardList },
+};
+
+const finalStep: Step = { id: 'branding', title: 'Branding', icon: Palette };
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [clubData, setClubData] = useState({
-    description: "",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
-    phone: "",
-    website: "",
-    programs: [] as string[],
-    primaryColor: "#d4a739",
-    secondaryColor: "#1a1f36",
-  });
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [clubName, setClubName] = useState('');
+  const [onboardingData, setOnboardingData] = useState<OnboardingData>(defaultOnboardingData);
 
-  const progress = (currentStep / steps.length) * 100;
+  // Load club name from signup
+  useEffect(() => {
+    const stored = sessionStorage.getItem('clubSignup');
+    if (stored) {
+      const { clubName } = JSON.parse(stored);
+      setClubName(clubName);
+    }
+  }, []);
+
+  // Build dynamic steps based on selected features
+  const steps = useMemo(() => {
+    const dynamicSteps = [...baseSteps];
+    
+    // Add feature-specific steps in order
+    const featureOrder = ['website', 'schedule', 'payments', 'registration'];
+    featureOrder.forEach(feature => {
+      if (onboardingData.selectedFeatures.includes(feature) && featureSteps[feature]) {
+        dynamicSteps.push(featureSteps[feature]);
+      }
+    });
+    
+    dynamicSteps.push(finalStep);
+    return dynamicSteps;
+  }, [onboardingData.selectedFeatures]);
+
+  const currentStep = steps[currentStepIndex];
+  const progress = ((currentStepIndex + 1) / steps.length) * 100;
+
+  const handleDataChange = (updates: Partial<OnboardingData>) => {
+    setOnboardingData(prev => ({ ...prev, ...updates }));
+  };
 
   const handleNext = () => {
-    if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
+    if (currentStepIndex < steps.length - 1) {
+      setCurrentStepIndex(currentStepIndex + 1);
     } else {
+      // Save onboarding data and navigate to dashboard
+      sessionStorage.setItem('onboardingData', JSON.stringify(onboardingData));
       navigate("/dashboard");
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(currentStepIndex - 1);
     }
   };
 
-  const programOptions = [
-    "Youth Wrestling (K-5)",
-    "Middle School (6-8)",
-    "High School (9-12)",
-    "Adult/Masters",
-    "Girls/Women's Wrestling",
-    "Freestyle/Greco",
-    "Private Lessons",
-    "Summer Camps",
-  ];
+  const renderStepContent = () => {
+    switch (currentStep.id) {
+      case 'club-info':
+        return <ClubInfoStep data={onboardingData} onChange={handleDataChange} />;
+      case 'location':
+        return <LocationStep data={onboardingData} onChange={handleDataChange} />;
+      case 'programs':
+        return <ProgramsStep data={onboardingData} onChange={handleDataChange} />;
+      case 'features':
+        return <FeaturesStep data={onboardingData} onChange={handleDataChange} />;
+      case 'website':
+        return <WebsiteStep data={onboardingData} onChange={handleDataChange} />;
+      case 'schedule':
+        return <ScheduleStep data={onboardingData} onChange={handleDataChange} />;
+      case 'payments':
+        return <PaymentsStep data={onboardingData} onChange={handleDataChange} />;
+      case 'registration':
+        return <RegistrationStep data={onboardingData} onChange={handleDataChange} />;
+      case 'branding':
+        return <BrandingStep data={onboardingData} onChange={handleDataChange} clubName={clubName} />;
+      default:
+        return null;
+    }
+  };
 
-  const toggleProgram = (program: string) => {
-    setClubData(prev => ({
-      ...prev,
-      programs: prev.programs.includes(program)
-        ? prev.programs.filter(p => p !== program)
-        : [...prev.programs, program]
-    }));
+  // Find completed step indices for progress display
+  const getStepStatus = (stepIndex: number) => {
+    if (stepIndex < currentStepIndex) return 'completed';
+    if (stepIndex === currentStepIndex) return 'current';
+    return 'upcoming';
   };
 
   return (
@@ -86,7 +143,7 @@ export default function Onboarding() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Trophy className="h-8 w-8 text-gold" />
-              <span className="text-2xl font-display">MATMASTER</span>
+              <span className="text-2xl font-display">HOMETEAM</span>
             </div>
             <Button variant="ghost" onClick={() => navigate("/dashboard")}>
               Skip for now
@@ -98,271 +155,70 @@ export default function Onboarding() {
       {/* Progress */}
       <div className="container mx-auto px-6 py-8 max-w-3xl">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className={`
-                  flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all
-                  ${currentStep >= step.id 
-                    ? "bg-gold border-gold text-navy" 
-                    : "border-border text-muted-foreground"
-                  }
-                `}>
-                  {currentStep > step.id ? (
-                    <CheckCircle className="h-5 w-5" />
-                  ) : (
-                    <step.icon className="h-5 w-5" />
+          {/* Step indicators - show max 6 */}
+          <div className="flex items-center justify-between mb-4 overflow-x-auto pb-2">
+            {steps.slice(0, 6).map((step, index) => {
+              const status = getStepStatus(index);
+              const StepIcon = step.icon;
+              
+              return (
+                <div key={step.id} className="flex items-center">
+                  <div className={`
+                    flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all flex-shrink-0
+                    ${status === 'completed' 
+                      ? "bg-gold border-gold text-navy" 
+                      : status === 'current'
+                        ? "bg-gold border-gold text-navy"
+                        : "border-border text-muted-foreground"
+                    }
+                  `}>
+                    {status === 'completed' ? (
+                      <CheckCircle className="h-5 w-5" />
+                    ) : (
+                      <StepIcon className="h-5 w-5" />
+                    )}
+                  </div>
+                  {index < Math.min(steps.length - 1, 5) && (
+                    <div className={`
+                      w-8 md:w-16 h-0.5 mx-1 flex-shrink-0
+                      ${status === 'completed' ? "bg-gold" : "bg-border"}
+                    `} />
                   )}
                 </div>
-                {index < steps.length - 1 && (
-                  <div className={`
-                    w-16 md:w-24 h-0.5 mx-2
-                    ${currentStep > step.id ? "bg-gold" : "bg-border"}
-                  `} />
-                )}
-              </div>
-            ))}
+              );
+            })}
+            {steps.length > 6 && (
+              <span className="text-sm text-muted-foreground ml-2 flex-shrink-0">
+                +{steps.length - 6} more
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="font-medium">{currentStep.title}</span>
+            <span className="text-muted-foreground">
+              Step {currentStepIndex + 1} of {steps.length}
+            </span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
         {/* Step Content */}
         <div className="bg-card rounded-2xl shadow-card p-8">
-          {currentStep === 1 && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-display mb-2">Tell us about your club</h2>
-                <p className="text-muted-foreground">This information will appear on your club's website</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="description">Club Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Tell us about your wrestling club's history, mission, and what makes it special..."
-                    value={clubData.description}
-                    onChange={(e) => setClubData({ ...clubData, description: e.target.value })}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="(555) 123-4567"
-                        value={clubData.phone}
-                        onChange={(e) => setClubData({ ...clubData, phone: e.target.value })}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website (optional)</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="website"
-                        type="url"
-                        placeholder="www.yourclub.com"
-                        value={clubData.website}
-                        onChange={(e) => setClubData({ ...clubData, website: e.target.value })}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-display mb-2">Where are you located?</h2>
-                <p className="text-muted-foreground">Help wrestlers find your facility</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="address">Street Address</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="address"
-                      placeholder="123 Wrestling Way"
-                      value={clubData.address}
-                      onChange={(e) => setClubData({ ...clubData, address: e.target.value })}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      placeholder="Anytown"
-                      value={clubData.city}
-                      onChange={(e) => setClubData({ ...clubData, city: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      placeholder="PA"
-                      value={clubData.state}
-                      onChange={(e) => setClubData({ ...clubData, state: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="zip">ZIP Code</Label>
-                    <Input
-                      id="zip"
-                      placeholder="12345"
-                      value={clubData.zip}
-                      onChange={(e) => setClubData({ ...clubData, zip: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 3 && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-display mb-2">What programs do you offer?</h2>
-                <p className="text-muted-foreground">Select all that apply</p>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-3">
-                {programOptions.map((program) => (
-                  <button
-                    key={program}
-                    type="button"
-                    onClick={() => toggleProgram(program)}
-                    className={`
-                      p-4 rounded-xl border-2 text-left transition-all
-                      ${clubData.programs.includes(program)
-                        ? "border-gold bg-gold/10 text-foreground"
-                        : "border-border hover:border-gold/50"
-                      }
-                    `}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`
-                        w-5 h-5 rounded-full border-2 flex items-center justify-center
-                        ${clubData.programs.includes(program)
-                          ? "border-gold bg-gold"
-                          : "border-border"
-                        }
-                      `}>
-                        {clubData.programs.includes(program) && (
-                          <CheckCircle className="h-3 w-3 text-navy" />
-                        )}
-                      </div>
-                      <span className="font-medium">{program}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {currentStep === 4 && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-display mb-2">Customize your brand</h2>
-                <p className="text-muted-foreground">Upload your logo and choose your colors</p>
-              </div>
-
-              <div className="space-y-6">
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-gold/50 transition-colors cursor-pointer">
-                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="font-medium mb-1">Upload your club logo</p>
-                  <p className="text-sm text-muted-foreground">PNG, JPG up to 5MB</p>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Primary Color</Label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={clubData.primaryColor}
-                        onChange={(e) => setClubData({ ...clubData, primaryColor: e.target.value })}
-                        className="w-12 h-12 rounded-lg cursor-pointer border-0"
-                      />
-                      <Input
-                        value={clubData.primaryColor}
-                        onChange={(e) => setClubData({ ...clubData, primaryColor: e.target.value })}
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Secondary Color</Label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={clubData.secondaryColor}
-                        onChange={(e) => setClubData({ ...clubData, secondaryColor: e.target.value })}
-                        className="w-12 h-12 rounded-lg cursor-pointer border-0"
-                      />
-                      <Input
-                        value={clubData.secondaryColor}
-                        onChange={(e) => setClubData({ ...clubData, secondaryColor: e.target.value })}
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preview */}
-                <div className="rounded-xl overflow-hidden border">
-                  <div 
-                    className="p-6 text-white"
-                    style={{ backgroundColor: clubData.secondaryColor }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-6 w-6" style={{ color: clubData.primaryColor }} />
-                      <span className="text-xl font-display">YOUR CLUB</span>
-                    </div>
-                  </div>
-                  <div className="p-6 bg-card">
-                    <Button 
-                      style={{ backgroundColor: clubData.primaryColor }}
-                      className="text-white"
-                    >
-                      Sample Button
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {renderStepContent()}
 
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t">
             <Button
               variant="outline"
               onClick={handleBack}
-              disabled={currentStep === 1}
+              disabled={currentStepIndex === 0}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <Button variant="hero" onClick={handleNext}>
-              {currentStep === steps.length ? "Complete Setup" : "Continue"}
+              {currentStepIndex === steps.length - 1 ? "Complete Setup" : "Continue"}
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           </div>

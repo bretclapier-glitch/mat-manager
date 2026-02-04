@@ -33,7 +33,7 @@ export default function Login() {
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-6">
               <Trophy className="h-10 w-10 text-gold" />
-              <span className="text-3xl font-display text-white">MATMASTER</span>
+              <span className="text-3xl font-display text-white">HOMETEAM</span>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">Welcome back</h1>
             <p className="text-white/60">Sign in to manage your club</p>
