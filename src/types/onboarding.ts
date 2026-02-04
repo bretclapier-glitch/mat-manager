@@ -27,6 +27,13 @@ export interface RegistrationField {
   options?: string[];
 }
 
+export interface MessageChannel {
+  id: string;
+  name: string;
+  description: string;
+  isPrivate: boolean;
+}
+
 export interface OnboardingData {
   // Club Info
   description: string;
@@ -49,8 +56,18 @@ export interface OnboardingData {
   hasExistingWebsite: boolean;
   existingWebsiteUrl: string;
   
+  // Messaging
+  enableDirectMessages: boolean;
+  enableEmailNotifications: boolean;
+  messageChannels: MessageChannel[];
+  
   // Registration
   registrationFields: RegistrationField[];
+  
+  // Merch
+  merchSetupType: 'existing' | 'shopify' | 'none';
+  existingMerchStoreName: string;
+  existingMerchStoreUrl: string;
   
   // Branding
   primaryColor: string;
@@ -69,6 +86,12 @@ export const defaultOnboardingData: OnboardingData = {
   selectedFeatures: [],
   hasExistingWebsite: false,
   existingWebsiteUrl: '',
+  enableDirectMessages: true,
+  enableEmailNotifications: true,
+  messageChannels: [
+    { id: '1', name: 'announcements', description: 'Club-wide announcements', isPrivate: false },
+    { id: '2', name: 'general', description: 'General discussion', isPrivate: false },
+  ],
   registrationFields: [
     { id: '1', label: 'Age', type: 'number', required: true },
     { id: '2', label: 'Grade', type: 'select', required: true, options: ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
@@ -76,6 +99,9 @@ export const defaultOnboardingData: OnboardingData = {
     { id: '4', label: 'Experience Level', type: 'select', required: true, options: ['Beginner', 'Intermediate', 'Advanced', 'Competitive'] },
     { id: '5', label: 'City/Town', type: 'text', required: false },
   ],
+  merchSetupType: 'none',
+  existingMerchStoreName: '',
+  existingMerchStoreUrl: '',
   primaryColor: '#d4a739',
   secondaryColor: '#1a1f36',
 };
