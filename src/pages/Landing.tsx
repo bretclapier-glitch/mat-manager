@@ -59,7 +59,7 @@ export default function Landing() {
       <nav className="container mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Trophy className="h-8 w-8 text-gold" />
-          <span className="text-2xl font-display text-white">MATMASTER</span>
+          <span className="text-2xl font-display text-white">HOMETEAM</span>
         </div>
         <div className="flex items-center gap-4">
           <Link to="/login">
@@ -165,7 +165,7 @@ export default function Landing() {
             READY TO ELEVATE YOUR CLUB?
           </h2>
           <p className="text-xl text-navy/70 mb-8 max-w-2xl mx-auto">
-            Join hundreds of wrestling clubs already using MatMaster
+            Join hundreds of wrestling clubs already using HomeTeam
           </p>
           <Link to="/signup">
             <Button variant="dark" size="xl">
@@ -181,10 +181,10 @@ export default function Landing() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
               <Trophy className="h-6 w-6 text-gold" />
-              <span className="text-xl font-display text-white">MATMASTER</span>
+              <span className="text-xl font-display text-white">HOMETEAM</span>
             </div>
             <p className="text-white/50 text-sm">
-              © 2024 MatMaster. All rights reserved.
+              © 2024 HomeTeam. All rights reserved.
             </p>
           </div>
         </div>
