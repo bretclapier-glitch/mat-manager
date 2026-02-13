@@ -46,7 +46,7 @@ import BaseballClubPrograms from "./pages/baseball/club/ClubPrograms";
 import BaseballClubRegister from "./pages/baseball/club/ClubRegister";
 import BaseballClubParentLogin from "./pages/baseball/club/ClubParentLogin";
 import BaseballClubParentDashboard from "./pages/baseball/club/ClubParentDashboard";
-
+import BaseballOnboarding from "./pages/baseball/Onboarding";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -92,7 +92,7 @@ const App = () => (
           <Route path="/wrestling/club/:clubSlug/store" element={<ClubParentStore />} />
 
           {/* Baseball admin */}
-          <Route path="/baseball/onboarding" element={<Onboarding />} />
+          <Route path="/baseball/onboarding" element={<BaseballOnboarding />} />
           <Route path="/baseball/dashboard" element={<BaseballDashboard />} />
           <Route path="/baseball/dashboard/players" element={<BaseballPlayers />} />
           <Route path="/baseball/dashboard/schedule" element={<BaseballSchedule />} />
