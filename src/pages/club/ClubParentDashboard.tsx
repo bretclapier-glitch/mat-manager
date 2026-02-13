@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useClubData } from "@/components/layout/ClubLayout";
+import ParentDashboardLayout from "@/components/layout/ParentDashboardLayout";
 import {
   Trophy,
   Calendar,
@@ -52,25 +53,15 @@ export default function ClubParentDashboard() {
   const basePath = `/club/${clubSlug}`;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Welcome */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
+    <ParentDashboardLayout>
+      <div>
+        {/* Welcome */}
+        <div className="mb-8">
           <h1 className="text-3xl font-display mb-2">WELCOME BACK, {parentInfo.name.split(" ")[0].toUpperCase()}</h1>
           <p className="text-muted-foreground">Manage your wrestlers, view schedules, and stay up to date.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-gold text-navy font-bold">DJ</AvatarFallback>
-          </Avatar>
-          <div className="hidden sm:block">
-            <p className="text-sm font-medium">{parentInfo.name}</p>
-            <p className="text-xs text-muted-foreground">{parentInfo.email}</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Alert */}
+        {/* Alert */}
       {announcements.some((a) => a.priority === "high") && (
         <Card className="mb-6 border-wrestling-red bg-wrestling-red/5">
           <CardContent className="p-4 flex items-start gap-3">
@@ -203,6 +194,7 @@ export default function ClubParentDashboard() {
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </ParentDashboardLayout>
   );
 }
