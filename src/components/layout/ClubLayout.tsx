@@ -25,7 +25,7 @@ export default function ClubLayout() {
   const club = useClubData();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

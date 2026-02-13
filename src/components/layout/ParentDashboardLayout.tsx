@@ -40,7 +40,7 @@ export default function ParentDashboardLayout({ children }: ParentDashboardLayou
   const location = useLocation();
   const club = useClubData();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: `${basePath}/parent` },

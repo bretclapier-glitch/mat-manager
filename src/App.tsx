@@ -18,7 +18,7 @@ import Settings from "./pages/Settings";
 import Members from "./pages/Members";
 import NotFound from "./pages/NotFound";
 
-// Club website (parent-facing) routes
+// Wrestling club routes
 import ClubLayout from "./components/layout/ClubLayout";
 import ClubHome from "./pages/club/ClubHome";
 import ClubPrograms from "./pages/club/ClubPrograms";
@@ -33,6 +33,20 @@ import ClubParentCalendar from "./pages/club/ClubParentCalendar";
 import ClubParentProfile from "./pages/club/ClubParentProfile";
 import ClubParentStore from "./pages/club/ClubParentStore";
 
+// Baseball routes
+import BaseballDashboard from "./pages/baseball/Dashboard";
+import BaseballPlayers from "./pages/baseball/Players";
+import BaseballSchedule from "./pages/baseball/Schedule";
+import BaseballMessages from "./pages/baseball/Messages";
+import BaseballPayments from "./pages/baseball/Payments";
+import BaseballSettings from "./pages/baseball/Settings";
+import BaseballClubLayout from "./components/layout/BaseballClubLayout";
+import BaseballClubHome from "./pages/baseball/club/ClubHome";
+import BaseballClubPrograms from "./pages/baseball/club/ClubPrograms";
+import BaseballClubRegister from "./pages/baseball/club/ClubRegister";
+import BaseballClubParentLogin from "./pages/baseball/club/ClubParentLogin";
+import BaseballClubParentDashboard from "./pages/baseball/club/ClubParentDashboard";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -42,43 +56,61 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* SaaS landing & club owner auth */}
-          <Route path="/" element={<Onboarding />} />
-          <Route path="/landing" element={<Landing />} />
+          {/* HomeTeam landing */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/onboarding" element={<Onboarding />} />
 
-          {/* Club admin dashboard */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/schedule" element={<Schedule />} />
-          <Route path="/dashboard/messages" element={<Messages />} />
-          <Route path="/dashboard/registration" element={<Registration />} />
-          <Route path="/dashboard/store" element={<Store />} />
-          <Route path="/dashboard/website" element={<Website />} />
-          <Route path="/dashboard/payments" element={<Payments />} />
-          <Route path="/dashboard/settings" element={<Settings />} />
-          <Route path="/dashboard/members" element={<Members />} />
+          {/* Wrestling admin */}
+          <Route path="/wrestling/onboarding" element={<Onboarding />} />
+          <Route path="/wrestling/dashboard" element={<Dashboard />} />
+          <Route path="/wrestling/dashboard/schedule" element={<Schedule />} />
+          <Route path="/wrestling/dashboard/messages" element={<Messages />} />
+          <Route path="/wrestling/dashboard/registration" element={<Registration />} />
+          <Route path="/wrestling/dashboard/store" element={<Store />} />
+          <Route path="/wrestling/dashboard/website" element={<Website />} />
+          <Route path="/wrestling/dashboard/payments" element={<Payments />} />
+          <Route path="/wrestling/dashboard/settings" element={<Settings />} />
+          <Route path="/wrestling/dashboard/members" element={<Members />} />
 
-          {/* Club public website (parent-facing) */}
-          <Route path="/club/:clubSlug" element={<ClubLayout />}>
+          {/* Wrestling club public */}
+          <Route path="/wrestling/club/:clubSlug" element={<ClubLayout />}>
             <Route index element={<ClubHome />} />
             <Route path="programs" element={<ClubPrograms />} />
             <Route path="register/:programId" element={<ClubRegister />} />
             <Route path="login" element={<ClubParentLogin />} />
           </Route>
 
-          {/* Parent dashboard (own layout) */}
-          <Route path="/club/:clubSlug/parent" element={<ClubParentDashboard />} />
-          <Route path="/club/:clubSlug/parent/wrestler/:wrestlerId" element={<ClubWrestlerProfile />} />
-          <Route path="/club/:clubSlug/parent/event/:eventId" element={<ClubEventDetail />} />
-          <Route path="/club/:clubSlug/parent/messages" element={<ClubParentMessages />} />
-          <Route path="/club/:clubSlug/parent/payments" element={<ClubParentPayments />} />
-          <Route path="/club/:clubSlug/parent/calendar" element={<ClubParentCalendar />} />
-          <Route path="/club/:clubSlug/parent/profile" element={<ClubParentProfile />} />
-          <Route path="/club/:clubSlug/store" element={<ClubParentStore />} />
+          {/* Wrestling parent portal */}
+          <Route path="/wrestling/club/:clubSlug/parent" element={<ClubParentDashboard />} />
+          <Route path="/wrestling/club/:clubSlug/parent/wrestler/:wrestlerId" element={<ClubWrestlerProfile />} />
+          <Route path="/wrestling/club/:clubSlug/parent/event/:eventId" element={<ClubEventDetail />} />
+          <Route path="/wrestling/club/:clubSlug/parent/messages" element={<ClubParentMessages />} />
+          <Route path="/wrestling/club/:clubSlug/parent/payments" element={<ClubParentPayments />} />
+          <Route path="/wrestling/club/:clubSlug/parent/calendar" element={<ClubParentCalendar />} />
+          <Route path="/wrestling/club/:clubSlug/parent/profile" element={<ClubParentProfile />} />
+          <Route path="/wrestling/club/:clubSlug/store" element={<ClubParentStore />} />
 
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Baseball admin */}
+          <Route path="/baseball/onboarding" element={<Onboarding />} />
+          <Route path="/baseball/dashboard" element={<BaseballDashboard />} />
+          <Route path="/baseball/dashboard/players" element={<BaseballPlayers />} />
+          <Route path="/baseball/dashboard/schedule" element={<BaseballSchedule />} />
+          <Route path="/baseball/dashboard/messages" element={<BaseballMessages />} />
+          <Route path="/baseball/dashboard/payments" element={<BaseballPayments />} />
+          <Route path="/baseball/dashboard/settings" element={<BaseballSettings />} />
+
+          {/* Baseball club public */}
+          <Route path="/baseball/club/:clubSlug" element={<BaseballClubLayout />}>
+            <Route index element={<BaseballClubHome />} />
+            <Route path="programs" element={<BaseballClubPrograms />} />
+            <Route path="register/:programId" element={<BaseballClubRegister />} />
+            <Route path="login" element={<BaseballClubParentLogin />} />
+          </Route>
+
+          {/* Baseball parent portal */}
+          <Route path="/baseball/club/:clubSlug/parent" element={<BaseballClubParentDashboard />} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

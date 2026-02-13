@@ -32,15 +32,15 @@ interface DashboardLayoutProps {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Users, label: "Members", path: "/dashboard/members" },
-  { icon: Calendar, label: "Schedule", path: "/dashboard/schedule" },
-  { icon: MessageSquare, label: "Messages", path: "/dashboard/messages" },
-  { icon: CreditCard, label: "Payments", path: "/dashboard/payments" },
-  { icon: FileText, label: "Registration", path: "/dashboard/registration" },
-  { icon: ShoppingBag, label: "Merch Store", path: "/dashboard/store" },
-  { icon: Globe, label: "Website", path: "/dashboard/website" },
-  { icon: Settings, label: "Settings", path: "/dashboard/settings" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/wrestling/dashboard" },
+  { icon: Users, label: "Members", path: "/wrestling/dashboard/members" },
+  { icon: Calendar, label: "Schedule", path: "/wrestling/dashboard/schedule" },
+  { icon: MessageSquare, label: "Messages", path: "/wrestling/dashboard/messages" },
+  { icon: CreditCard, label: "Payments", path: "/wrestling/dashboard/payments" },
+  { icon: FileText, label: "Registration", path: "/wrestling/dashboard/registration" },
+  { icon: ShoppingBag, label: "Merch Store", path: "/wrestling/dashboard/store" },
+  { icon: Globe, label: "Website", path: "/wrestling/dashboard/website" },
+  { icon: Settings, label: "Settings", path: "/wrestling/dashboard/settings" },
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -66,9 +66,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-6 border-b border-sidebar-border">
-            <Link to="/dashboard" className="flex items-center gap-2">
+            <Link to="/wrestling/dashboard" className="flex items-center gap-2">
               <Trophy className="h-8 w-8 text-gold" />
-              <span className="text-xl font-display text-white">HOMETEAM</span>
+              <span className="text-xl font-display text-white">HOMETEAM WRESTLING</span>
             </Link>
           </div>
 
@@ -141,7 +141,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     ].map((n, i) => (
                       <Link
                         key={i}
-                        to={i === 0 ? "/dashboard/registration" : i === 1 ? "/dashboard/payments" : i === 3 ? "/dashboard/messages" : "/dashboard/schedule"}
+                        to={i === 0 ? "/wrestling/dashboard/registration" : i === 1 ? "/wrestling/dashboard/payments" : i === 3 ? "/wrestling/dashboard/messages" : "/wrestling/dashboard/schedule"}
                         className={`block p-3 border-b last:border-0 hover:bg-secondary/50 transition-colors ${n.unread ? "bg-gold/5" : ""}`}
                       >
                         <div className="flex items-start gap-2">
@@ -156,7 +156,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     ))}
                   </div>
                   <div className="p-2 border-t">
-                    <Link to="/dashboard/messages" className="block text-center text-sm text-gold hover:underline py-1">View all notifications</Link>
+                    <Link to="/wrestling/dashboard/messages" className="block text-center text-sm text-gold hover:underline py-1">View all notifications</Link>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -173,7 +173,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <Link to="/dashboard/settings">
+                  <Link to="/wrestling/dashboard/settings">
                     <DropdownMenuItem>
                       <Settings className="h-4 w-4 mr-2" />
                       Settings
