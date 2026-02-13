@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -45,6 +46,7 @@ export default function ClubRegister() {
   const [currentStep, setCurrentStep] = useState(1);
   const [waiverSigned, setWaiverSigned] = useState(false);
   const [formData, setFormData] = useState({
+    usaWrestlingNumber: "",
     wrestlerFirstName: "", wrestlerLastName: "", wrestlerDOB: "", wrestlerGender: "",
     wrestlerGrade: "", experience: "", shirtSize: "",
     parentFirstName: "", parentLastName: "", email: "", phone: "",
@@ -134,6 +136,34 @@ export default function ClubRegister() {
               <CardDescription>Tell us about the wrestler who will be participating</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <Alert className="border-gold bg-gold/10">
+                <AlertCircle className="h-4 w-4 text-gold" />
+                <AlertDescription className="text-sm">
+                  <strong>USA Wrestling membership is required.</strong> All wrestlers must have an active USA Wrestling card to participate. This ensures proper insurance coverage for your athlete.
+                  <br />
+                  <span className="text-muted-foreground mt-1 block">
+                    Don't have a USA Wrestling card?{" "}
+                    <a
+                      href="https://www.usawmembership.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gold underline hover:text-gold-light font-medium"
+                    >
+                      Follow these instructions to get one →
+                    </a>
+                  </span>
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label>USA Wrestling Number *</Label>
+                <Input
+                  value={formData.usaWrestlingNumber}
+                  onChange={(e) => handleInputChange("usaWrestlingNumber", e.target.value)}
+                  placeholder="Enter USA Wrestling membership number"
+                />
+              </div>
+
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>First Name *</Label>
