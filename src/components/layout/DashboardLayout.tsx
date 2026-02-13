@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -117,12 +118,48 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <Menu className="h-6 w-6" />
             </button>
 
-            <div className="flex items-center gap-4 ml-auto">
+             <div className="flex items-center gap-4 ml-auto">
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-secondary rounded-lg">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-wrestling-red rounded-full" />
-              </button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="relative p-2 hover:bg-secondary rounded-lg">
+                    <Bell className="h-5 w-5 text-muted-foreground" />
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-wrestling-red rounded-full" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-0">
+                  <div className="p-4 border-b">
+                    <h4 className="font-display text-sm">NOTIFICATIONS</h4>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {[
+                      { title: "New Registration", desc: "Marcus Johnson registered for Youth Wrestling", time: "5 min ago", unread: true },
+                      { title: "Payment Received", desc: "$200.00 from Sarah Williams", time: "1 hour ago", unread: true },
+                      { title: "Practice Cancelled", desc: "Feb 8 practice cancelled due to maintenance", time: "3 hours ago", unread: false },
+                      { title: "Message from Parent", desc: "David Johnson sent you a message", time: "Yesterday", unread: false },
+                      { title: "Tournament Reminder", desc: "Austin Youth Tournament is in 5 days", time: "Yesterday", unread: false },
+                    ].map((n, i) => (
+                      <Link
+                        key={i}
+                        to={i === 0 ? "/dashboard/registration" : i === 1 ? "/dashboard/payments" : i === 3 ? "/dashboard/messages" : "/dashboard/schedule"}
+                        className={`block p-3 border-b last:border-0 hover:bg-secondary/50 transition-colors ${n.unread ? "bg-gold/5" : ""}`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {n.unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-gold shrink-0" />}
+                          <div className={n.unread ? "" : "ml-4"}>
+                            <p className={`text-sm ${n.unread ? "font-semibold" : "font-medium"}`}>{n.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{n.desc}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{n.time}</p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="p-2 border-t">
+                    <Link to="/dashboard/messages" className="block text-center text-sm text-gold hover:underline py-1">View all notifications</Link>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Profile dropdown */}
               <DropdownMenu>
