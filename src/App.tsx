@@ -14,10 +14,15 @@ import Registration from "./pages/Registration";
 import Store from "./pages/Store";
 import Website from "./pages/Website";
 import Payments from "./pages/Payments";
-import PublicPrograms from "./pages/PublicPrograms";
-import PublicRegister from "./pages/PublicRegister";
-import ParentDashboard from "./pages/ParentDashboard";
 import NotFound from "./pages/NotFound";
+
+// Club website (parent-facing) routes
+import ClubLayout from "./components/layout/ClubLayout";
+import ClubHome from "./pages/club/ClubHome";
+import ClubPrograms from "./pages/club/ClubPrograms";
+import ClubRegister from "./pages/club/ClubRegister";
+import ClubParentLogin from "./pages/club/ClubParentLogin";
+import ClubParentDashboard from "./pages/club/ClubParentDashboard";
 
 const queryClient = new QueryClient();
 
@@ -28,15 +33,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* SaaS landing & club owner auth */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/onboarding" element={<Onboarding />} />
-          {/* Parent-facing routes */}
-          <Route path="/programs" element={<PublicPrograms />} />
-          <Route path="/register/:programId" element={<PublicRegister />} />
-          <Route path="/parent" element={<ParentDashboard />} />
-          {/* Admin dashboard routes */}
+
+          {/* Club admin dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/schedule" element={<Schedule />} />
           <Route path="/dashboard/messages" element={<Messages />} />
@@ -44,6 +47,16 @@ const App = () => (
           <Route path="/dashboard/store" element={<Store />} />
           <Route path="/dashboard/website" element={<Website />} />
           <Route path="/dashboard/payments" element={<Payments />} />
+
+          {/* Club public website (parent-facing) */}
+          <Route path="/club/:clubSlug" element={<ClubLayout />}>
+            <Route index element={<ClubHome />} />
+            <Route path="programs" element={<ClubPrograms />} />
+            <Route path="register/:programId" element={<ClubRegister />} />
+            <Route path="login" element={<ClubParentLogin />} />
+            <Route path="parent" element={<ClubParentDashboard />} />
+          </Route>
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
