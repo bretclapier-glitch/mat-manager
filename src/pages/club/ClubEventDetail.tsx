@@ -51,7 +51,7 @@ const eventData: Record<string, {
 export default function ClubEventDetail() {
   const { clubSlug, eventId } = useParams();
   const club = useClubData();
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
   const event = eventData[eventId || "1"];
 
   if (!event) {

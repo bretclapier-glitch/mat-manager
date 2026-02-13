@@ -50,7 +50,7 @@ const announcements = [
 export default function ClubParentDashboard() {
   const { clubSlug } = useParams();
   const club = useClubData();
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
 
   return (
     <ParentDashboardLayout>
