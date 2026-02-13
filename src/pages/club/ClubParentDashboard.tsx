@@ -95,7 +95,7 @@ export default function ClubParentDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               {wrestlers.map((w) => (
-                <div key={w.id} className="p-4 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors">
+                <Link key={w.id} to={`${basePath}/parent/wrestler/${w.id}`} className="block p-4 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors cursor-pointer">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12">
@@ -113,17 +113,22 @@ export default function ClubParentDashboard() {
                     <div className="flex items-center gap-2"><Trophy className="h-4 w-4 text-gold" /><span>{w.upcomingEvents} upcoming</span></div>
                     <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-wrestling-green" /><span>{w.attendance}% attendance</span></div>
                   </div>
-                </div>
+                </Link>
               ))}
             </CardContent>
           </Card>
 
           {/* Schedule */}
           <Card className="shadow-card">
-            <CardHeader><CardTitle className="text-xl font-display">UPCOMING SCHEDULE</CardTitle></CardHeader>
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle className="text-xl font-display">UPCOMING SCHEDULE</CardTitle>
+              <Link to={`${basePath}/parent/calendar`}>
+                <Button variant="outline" size="sm"><Calendar className="h-4 w-4 mr-2" />Calendar</Button>
+              </Link>
+            </CardHeader>
             <CardContent className="space-y-3">
               {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50">
+                <Link key={event.id} to={`${basePath}/parent/event/${event.id}`} className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors cursor-pointer">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${event.type === "tournament" ? "bg-gold/20 text-gold" : "bg-navy/10 text-navy"}`}>
                     {event.type === "tournament" ? <Trophy className="h-6 w-6" /> : <Calendar className="h-6 w-6" />}
                   </div>
@@ -137,7 +142,7 @@ export default function ClubParentDashboard() {
                     <Badge variant="secondary" className="mt-2 text-xs">{event.wrestler}</Badge>
                   </div>
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </div>
+                </Link>
               ))}
             </CardContent>
           </Card>

@@ -23,6 +23,8 @@ import ClubPrograms from "./pages/club/ClubPrograms";
 import ClubRegister from "./pages/club/ClubRegister";
 import ClubParentLogin from "./pages/club/ClubParentLogin";
 import ClubParentDashboard from "./pages/club/ClubParentDashboard";
+import ClubWrestlerProfile from "./pages/club/ClubWrestlerProfile";
+import ClubEventDetail from "./pages/club/ClubEventDetail";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +57,8 @@ const App = () => (
             <Route path="register/:programId" element={<ClubRegister />} />
             <Route path="login" element={<ClubParentLogin />} />
             <Route path="parent" element={<ClubParentDashboard />} />
+            <Route path="parent/wrestler/:wrestlerId" element={<ClubWrestlerProfile />} />
+            <Route path="parent/event/:eventId" element={<ClubEventDetail />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
