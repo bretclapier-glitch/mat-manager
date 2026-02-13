@@ -59,7 +59,7 @@ const availablePrograms = [
 export default function ClubWrestlerProfile() {
   const { clubSlug, wrestlerId } = useParams();
   const club = useClubData();
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
   const wrestler = wrestlerData[wrestlerId || "1"];
 
   if (!wrestler) {

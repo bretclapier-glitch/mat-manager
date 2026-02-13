@@ -13,7 +13,7 @@ export default function ClubParentLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();

@@ -56,7 +56,7 @@ export default function ClubRegister() {
   });
 
   const program = programs[programId || "1"];
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
 
   if (!program) {
     return (

@@ -16,7 +16,7 @@ const events = [
 
 export default function ClubParentCalendar() {
   const { clubSlug } = useParams();
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
 
   return (
     <ParentDashboardLayout>

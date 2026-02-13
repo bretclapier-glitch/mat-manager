@@ -70,7 +70,7 @@ const programs = [
 
 export default function ClubPrograms() {
   const { clubSlug } = useParams();
-  const basePath = `/club/${clubSlug}`;
+  const basePath = `/wrestling/club/${clubSlug}`;
 
   return (
     <div className="py-16 bg-secondary/30">
