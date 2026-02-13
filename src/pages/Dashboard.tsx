@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,6 @@ import {
   Users, 
   DollarSign, 
   Calendar, 
-  TrendingUp,
   ArrowRight,
   ArrowUpRight,
   ArrowDownRight,
@@ -13,34 +13,10 @@ import {
 } from "lucide-react";
 
 const stats = [
-  {
-    title: "Total Members",
-    value: "156",
-    change: "+12%",
-    trend: "up",
-    icon: Users,
-  },
-  {
-    title: "Monthly Revenue",
-    value: "$8,420",
-    change: "+18%",
-    trend: "up",
-    icon: DollarSign,
-  },
-  {
-    title: "Active Registrations",
-    value: "23",
-    change: "-5%",
-    trend: "down",
-    icon: Calendar,
-  },
-  {
-    title: "Messages",
-    value: "8",
-    change: "unread",
-    trend: "neutral",
-    icon: MessageSquare,
-  },
+  { title: "Total Members", value: "156", change: "+12%", trend: "up", icon: Users, path: "/dashboard/members" },
+  { title: "Monthly Revenue", value: "$8,420", change: "+18%", trend: "up", icon: DollarSign, path: "/dashboard/payments" },
+  { title: "Active Registrations", value: "23", change: "-5%", trend: "down", icon: Calendar, path: "/dashboard/registration" },
+  { title: "Messages", value: "8", change: "unread", trend: "neutral", icon: MessageSquare, path: "/dashboard/messages" },
 ];
 
 const upcomingEvents = [
@@ -60,7 +36,6 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-display">DASHBOARD</h1>
           <p className="text-muted-foreground">Welcome back! Here's what's happening with your club.</p>
@@ -69,31 +44,29 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
-            <Card key={stat.title} className="shadow-card">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center">
-                    <stat.icon className="h-6 w-6 text-gold" />
-                  </div>
-                  {stat.trend !== "neutral" && (
-                    <div className={`flex items-center gap-1 text-sm font-medium ${
-                      stat.trend === "up" ? "text-wrestling-green" : "text-wrestling-red"
-                    }`}>
-                      {stat.trend === "up" ? (
-                        <ArrowUpRight className="h-4 w-4" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4" />
-                      )}
-                      {stat.change}
+            <Link key={stat.title} to={stat.path}>
+              <Card className="shadow-card hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center">
+                      <stat.icon className="h-6 w-6 text-gold" />
                     </div>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.title}</p>
-                </div>
-              </CardContent>
-            </Card>
+                    {stat.trend !== "neutral" && (
+                      <div className={`flex items-center gap-1 text-sm font-medium ${
+                        stat.trend === "up" ? "text-wrestling-green" : "text-wrestling-red"
+                      }`}>
+                        {stat.trend === "up" ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                        {stat.change}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                    <p className="text-sm text-muted-foreground">{stat.title}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
 
@@ -102,14 +75,16 @@ export default function Dashboard() {
           <Card className="shadow-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-xl font-display">UPCOMING EVENTS</CardTitle>
-              <Button variant="ghost" size="sm">
-                View All <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
+              <Link to="/dashboard/schedule">
+                <Button variant="ghost" size="sm">
+                  View All <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {upcomingEvents.map((event, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
+                  <Link key={index} to="/dashboard/schedule" className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${
                         event.type === "practice" ? "bg-gold" :
@@ -122,10 +97,8 @@ export default function Dashboard() {
                         <p className="text-sm text-muted-foreground">{event.time}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  </Link>
                 ))}
               </div>
             </CardContent>
@@ -135,14 +108,16 @@ export default function Dashboard() {
           <Card className="shadow-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-xl font-display">RECENT REGISTRATIONS</CardTitle>
-              <Button variant="ghost" size="sm">
-                View All <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
+              <Link to="/dashboard/registration">
+                <Button variant="ghost" size="sm">
+                  View All <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {recentRegistrations.map((reg, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                  <Link key={index} to="/dashboard/registration" className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center">
                         <span className="text-sm font-bold text-white">
@@ -161,7 +136,7 @@ export default function Dashboard() {
                     }`}>
                       {reg.status}
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </CardContent>
@@ -177,15 +152,15 @@ export default function Dashboard() {
                 <p className="text-white/70">Common tasks to manage your club</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button variant="hero" size="lg">
-                  Add Member
-                </Button>
-                <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 hover:text-white">
-                  Create Event
-                </Button>
-                <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 hover:text-white">
-                  Send Message
-                </Button>
+                <Link to="/dashboard/members">
+                  <Button variant="hero" size="lg">Add Member</Button>
+                </Link>
+                <Link to="/dashboard/schedule">
+                  <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 hover:text-white">Create Event</Button>
+                </Link>
+                <Link to="/dashboard/messages">
+                  <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 hover:text-white">Send Message</Button>
+                </Link>
               </div>
             </div>
           </CardContent>
