@@ -14,6 +14,8 @@ import Registration from "./pages/Registration";
 import Store from "./pages/Store";
 import Website from "./pages/Website";
 import Payments from "./pages/Payments";
+import Settings from "./pages/Settings";
+import Members from "./pages/Members";
 import NotFound from "./pages/NotFound";
 
 // Club website (parent-facing) routes
@@ -36,7 +38,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           {/* SaaS landing & club owner auth */}
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Onboarding />} />
+          <Route path="/landing" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/onboarding" element={<Onboarding />} />
@@ -49,6 +52,8 @@ const App = () => (
           <Route path="/dashboard/store" element={<Store />} />
           <Route path="/dashboard/website" element={<Website />} />
           <Route path="/dashboard/payments" element={<Payments />} />
+          <Route path="/dashboard/settings" element={<Settings />} />
+          <Route path="/dashboard/members" element={<Members />} />
 
           {/* Club public website (parent-facing) */}
           <Route path="/club/:clubSlug" element={<ClubLayout />}>
