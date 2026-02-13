@@ -27,6 +27,11 @@ import ClubParentLogin from "./pages/club/ClubParentLogin";
 import ClubParentDashboard from "./pages/club/ClubParentDashboard";
 import ClubWrestlerProfile from "./pages/club/ClubWrestlerProfile";
 import ClubEventDetail from "./pages/club/ClubEventDetail";
+import ClubParentMessages from "./pages/club/ClubParentMessages";
+import ClubParentPayments from "./pages/club/ClubParentPayments";
+import ClubParentCalendar from "./pages/club/ClubParentCalendar";
+import ClubParentProfile from "./pages/club/ClubParentProfile";
+import ClubParentStore from "./pages/club/ClubParentStore";
 
 const queryClient = new QueryClient();
 
@@ -61,10 +66,17 @@ const App = () => (
             <Route path="programs" element={<ClubPrograms />} />
             <Route path="register/:programId" element={<ClubRegister />} />
             <Route path="login" element={<ClubParentLogin />} />
-            <Route path="parent" element={<ClubParentDashboard />} />
-            <Route path="parent/wrestler/:wrestlerId" element={<ClubWrestlerProfile />} />
-            <Route path="parent/event/:eventId" element={<ClubEventDetail />} />
           </Route>
+
+          {/* Parent dashboard (own layout) */}
+          <Route path="/club/:clubSlug/parent" element={<ClubParentDashboard />} />
+          <Route path="/club/:clubSlug/parent/wrestler/:wrestlerId" element={<ClubWrestlerProfile />} />
+          <Route path="/club/:clubSlug/parent/event/:eventId" element={<ClubEventDetail />} />
+          <Route path="/club/:clubSlug/parent/messages" element={<ClubParentMessages />} />
+          <Route path="/club/:clubSlug/parent/payments" element={<ClubParentPayments />} />
+          <Route path="/club/:clubSlug/parent/calendar" element={<ClubParentCalendar />} />
+          <Route path="/club/:clubSlug/parent/profile" element={<ClubParentProfile />} />
+          <Route path="/club/:clubSlug/store" element={<ClubParentStore />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

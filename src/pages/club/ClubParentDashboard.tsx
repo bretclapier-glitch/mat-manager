@@ -143,10 +143,9 @@ export default function ClubParentDashboard() {
         <div className="space-y-6">
           <Card className="shadow-card">
             <CardHeader><CardTitle className="text-xl font-display">QUICK ACTIONS</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
-              <Link to={`${basePath}/messages`}><Button variant="outline" className="flex-col h-auto py-4 w-full"><MessageSquare className="h-5 w-5 mb-2" /><span className="text-xs">Messages</span></Button></Link>
+            <CardContent className="grid grid-cols-3 gap-3">
+              <Link to={`${basePath}/parent/messages`}><Button variant="outline" className="flex-col h-auto py-4 w-full"><MessageSquare className="h-5 w-5 mb-2" /><span className="text-xs">Messages</span></Button></Link>
               <Link to={`${basePath}/store`}><Button variant="outline" className="flex-col h-auto py-4 w-full"><ShoppingBag className="h-5 w-5 mb-2" /><span className="text-xs">Shop</span></Button></Link>
-              <Link to={`${basePath}/documents`}><Button variant="outline" className="flex-col h-auto py-4 w-full"><FileText className="h-5 w-5 mb-2" /><span className="text-xs">Documents</span></Button></Link>
               <Link to={`${basePath}/parent/profile`}><Button variant="outline" className="flex-col h-auto py-4 w-full"><User className="h-5 w-5 mb-2" /><span className="text-xs">Profile</span></Button></Link>
             </CardContent>
           </Card>

@@ -46,9 +46,8 @@ export default function ParentDashboardLayout({ children }: ParentDashboardLayou
     { icon: LayoutDashboard, label: "Dashboard", path: `${basePath}/parent` },
     { icon: Users, label: "My Wrestlers", path: `${basePath}/parent` },
     { icon: Calendar, label: "Schedule", path: `${basePath}/parent/calendar` },
-    { icon: MessageSquare, label: "Messages", path: `${basePath}/messages` },
+    { icon: MessageSquare, label: "Messages", path: `${basePath}/parent/messages` },
     { icon: CreditCard, label: "Payments", path: `${basePath}/parent/payments` },
-    { icon: FileText, label: "Documents", path: `${basePath}/documents` },
     { icon: ShoppingBag, label: "Shop", path: `${basePath}/store` },
     { icon: User, label: "Profile", path: `${basePath}/parent/profile` },
   ];
