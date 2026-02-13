@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AddEventDialog from "@/components/schedule/AddEventDialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,7 @@ const generateCalendarDays = () => {
 
 export default function Schedule() {
   const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [addEventOpen, setAddEventOpen] = useState(false);
   const calendarDays = generateCalendarDays();
 
   return (
@@ -93,7 +95,7 @@ export default function Schedule() {
             <h1 className="text-3xl font-display">SCHEDULE</h1>
             <p className="text-muted-foreground">Manage practices, events, and competitions</p>
           </div>
-          <Button variant="hero">
+          <Button variant="hero" onClick={() => setAddEventOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Event
           </Button>
@@ -253,6 +255,8 @@ export default function Schedule() {
             </CardContent>
           </Card>
         </div>
+
+        <AddEventDialog open={addEventOpen} onOpenChange={setAddEventOpen} />
       </div>
     </DashboardLayout>
   );
