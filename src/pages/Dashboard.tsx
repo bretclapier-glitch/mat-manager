@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { title: "Total Members", value: "156", change: "+12%", trend: "up", icon: Users, path: "/dashboard/members" },
-  { title: "Monthly Revenue", value: "$8,420", change: "+18%", trend: "up", icon: DollarSign, path: "/dashboard/payments" },
-  { title: "Active Registrations", value: "23", change: "-5%", trend: "down", icon: Calendar, path: "/dashboard/registration" },
-  { title: "Messages", value: "8", change: "unread", trend: "neutral", icon: MessageSquare, path: "/dashboard/messages" },
+  { title: "Total Members", value: "156", change: "+12%", trend: "up", icon: Users, path: "/wrestling/dashboard/members" },
+  { title: "Monthly Revenue", value: "$8,420", change: "+18%", trend: "up", icon: DollarSign, path: "/wrestling/dashboard/payments" },
+  { title: "Active Registrations", value: "23", change: "-5%", trend: "down", icon: Calendar, path: "/wrestling/dashboard/registration" },
+  { title: "Messages", value: "8", change: "unread", trend: "neutral", icon: MessageSquare, path: "/wrestling/dashboard/messages" },
 ];
 
 const upcomingEvents = [
@@ -41,7 +41,6 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Welcome back! Here's what's happening with your club.</p>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
             <Link key={stat.title} to={stat.path}>
@@ -71,11 +70,10 @@ export default function Dashboard() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Upcoming Events */}
           <Card className="shadow-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-xl font-display">UPCOMING EVENTS</CardTitle>
-              <Link to="/dashboard/schedule">
+              <Link to="/wrestling/dashboard/schedule">
                 <Button variant="ghost" size="sm">
                   View All <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -84,7 +82,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {upcomingEvents.map((event, index) => (
-                  <Link key={index} to="/dashboard/schedule" className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer">
+                  <Link key={index} to="/wrestling/dashboard/schedule" className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${
                         event.type === "practice" ? "bg-gold" :
@@ -104,11 +102,10 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Registrations */}
           <Card className="shadow-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-xl font-display">RECENT REGISTRATIONS</CardTitle>
-              <Link to="/dashboard/registration">
+              <Link to="/wrestling/dashboard/registration">
                 <Button variant="ghost" size="sm">
                   View All <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -117,7 +114,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {recentRegistrations.map((reg, index) => (
-                  <Link key={index} to="/dashboard/registration" className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer">
+                  <Link key={index} to="/wrestling/dashboard/registration" className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center">
                         <span className="text-sm font-bold text-white">
@@ -143,7 +140,6 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
         <Card className="shadow-card bg-gradient-to-r from-navy to-navy-light text-white">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -152,13 +148,13 @@ export default function Dashboard() {
                 <p className="text-white/70">Common tasks to manage your club</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Link to="/dashboard/members">
+                <Link to="/wrestling/dashboard/members">
                   <Button variant="hero" size="lg">Add Member</Button>
                 </Link>
-                <Link to="/dashboard/schedule">
+                <Link to="/wrestling/dashboard/schedule">
                   <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 hover:text-white">Create Event</Button>
                 </Link>
-                <Link to="/dashboard/messages">
+                <Link to="/wrestling/dashboard/messages">
                   <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 hover:text-white">Send Message</Button>
                 </Link>
               </div>
