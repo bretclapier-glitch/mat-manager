@@ -22,7 +22,7 @@ export default function Signup() {
       clubName: formData.clubName,
       usaWrestlingId: formData.usaWrestlingId,
     }));
-    navigate("/onboarding");
+    navigate("/wrestling/onboarding");
   };
 
   return (

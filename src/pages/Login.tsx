@@ -14,7 +14,7 @@ export default function Login() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Implement actual auth
-    navigate("/dashboard");
+    navigate("/wrestling/dashboard");
   };
 
   return (

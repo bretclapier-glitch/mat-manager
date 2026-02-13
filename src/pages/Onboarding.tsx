@@ -99,7 +99,7 @@ export default function Onboarding() {
     } else {
       // Save onboarding data and navigate to dashboard
       sessionStorage.setItem('onboardingData', JSON.stringify(onboardingData));
-      navigate("/dashboard");
+      navigate("/wrestling/dashboard");
     }
   };
 
@@ -155,7 +155,7 @@ export default function Onboarding() {
               <Trophy className="h-8 w-8 text-gold" />
               <span className="text-2xl font-display">HOMETEAM</span>
             </div>
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+            <Button variant="ghost" onClick={() => navigate("/wrestling/dashboard")}>
               Skip for now
             </Button>
           </div>
