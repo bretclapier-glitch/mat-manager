@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, Clock, ChevronDown, ChevronUp, Pencil, Check } from "lucide-react";
 import { OnboardingData, Program } from "@/types/onboarding";
 
 interface ScheduleStepProps {
