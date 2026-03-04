@@ -36,7 +36,7 @@ const programs: Record<string, { name: string; price: number; duration: string; 
 const steps = [
   { id: 1, name: "Wrestler Info", icon: User },
   { id: 2, name: "Parent Info", icon: Users },
-  { id: 3, name: "Waiver", icon: FileText },
+  { id: 3, name: "Waivers & Policies", icon: FileText },
   { id: 4, name: "Payment", icon: CreditCard },
   { id: 5, name: "Complete", icon: CheckCircle },
 ];
@@ -279,8 +279,8 @@ export default function ClubRegister() {
         {currentStep === 3 && (
           <>
             <CardHeader>
-              <CardTitle className="text-2xl font-display">LIABILITY WAIVER</CardTitle>
-              <CardDescription>Please read and sign the waiver to continue</CardDescription>
+              <CardTitle className="text-2xl font-display">WAIVERS & POLICIES</CardTitle>
+              <CardDescription>Please read and agree to the following to continue</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="h-64 overflow-y-auto p-4 rounded-lg bg-secondary/50 text-sm text-muted-foreground border">
