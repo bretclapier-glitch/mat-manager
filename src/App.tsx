@@ -19,6 +19,7 @@ import Registration from "./pages/Registration";
 import Store from "./pages/Store";
 import Website from "./pages/Website";
 import Payments from "./pages/Payments";
+import StripeSetup from "./pages/StripeSetup";
 import Settings from "./pages/Settings";
 import Members from "./pages/Members";
 import ClubLayout from "./components/layout/ClubLayout";
