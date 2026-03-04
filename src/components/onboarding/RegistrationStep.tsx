@@ -1,6 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Select,
   SelectContent,
@@ -9,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, GripVertical, FileText, Upload } from "lucide-react";
+import { Plus, Trash2, GripVertical, FileText, Upload, Type, Eye } from "lucide-react";
 import { OnboardingData, RegistrationField, RegistrationPolicy } from "@/types/onboarding";
 import { useState } from "react";
 import {
