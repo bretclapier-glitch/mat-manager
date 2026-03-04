@@ -295,23 +295,29 @@ export default function RegistrationStep({ data, onChange }: RegistrationStepPro
         <div className="space-y-2">
           {(data.registrationPolicies || []).map((policy) => (
             <div key={policy.id} className="flex items-center gap-3 p-3 rounded-xl border bg-card/50">
-              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              {policy.contentType === 'text' ? (
+                <Type className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              )}
               <div className="flex-1 min-w-0">
                 <span className="font-medium text-sm">{policy.name}</span>
-                {policy.fileName && (
-                  <p className="text-xs text-muted-foreground truncate">{policy.fileName}</p>
-                )}
+                <p className="text-xs text-muted-foreground truncate">
+                  {policy.contentType === 'file' ? policy.fileName : 'Pasted text'}
+                </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handlePolicyFileSelect(policy.id)}
-                className="text-xs flex-shrink-0"
-              >
-                <Upload className="h-3 w-3 mr-1" />
-                {policy.fileName ? 'Replace' : 'Upload'}
-              </Button>
+              {(policy.textContent || policy.fileName) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewPolicy(policy)}
+                  className="text-xs flex-shrink-0"
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  Preview
+                </Button>
+              )}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Switch
                   id={`policy-req-${policy.id}`}
@@ -333,20 +339,118 @@ export default function RegistrationStep({ data, onChange }: RegistrationStepPro
           ))}
         </div>
 
-        <div className="flex gap-2">
-          <Input
-            value={newPolicyName}
-            onChange={(e) => setNewPolicyName(e.target.value)}
-            placeholder="e.g., Release of Liability, Code of Conduct..."
-            className="flex-1"
-            onKeyDown={(e) => e.key === 'Enter' && addPolicy()}
-          />
-          <Button type="button" variant="outline" onClick={addPolicy}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Policy
-          </Button>
-        </div>
+        <Button type="button" variant="outline" onClick={openAddDialog} className="w-full border-dashed border-2">
+          <Plus className="h-4 w-4 mr-1" />
+          Add Policy
+        </Button>
       </div>
+
+      {/* Add Policy Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {addStep === 'choose' ? 'Add Policy' : addStep === 'text' ? 'Paste Policy Text' : 'Upload Policy File'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {addStep === 'choose' && (
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-muted-foreground">How would you like to add your policy document?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setAddStep('text')}
+                  className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed hover:border-primary hover:bg-accent/50 transition-colors"
+                >
+                  <Type className="h-8 w-8 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="font-medium text-sm">Paste Text</p>
+                    <p className="text-xs text-muted-foreground mt-1">Copy & paste your policy content</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setAddStep('file')}
+                  className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed hover:border-primary hover:bg-accent/50 transition-colors"
+                >
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="font-medium text-sm">Upload File</p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF, DOC, or DOCX file</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {addStep === 'text' && (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Policy Name</Label>
+                <Input
+                  value={newPolicyName}
+                  onChange={(e) => setNewPolicyName(e.target.value)}
+                  placeholder="e.g., Release of Liability"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Policy Text</Label>
+                <Textarea
+                  value={newPolicyText}
+                  onChange={(e) => setNewPolicyText(e.target.value)}
+                  placeholder="Paste your policy text here..."
+                  className="min-h-[200px]"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setAddStep('choose')}>Back</Button>
+                <Button onClick={saveTextPolicy} disabled={!newPolicyName.trim() || !newPolicyText.trim()}>
+                  Save Policy
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {addStep === 'file' && (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Policy Name</Label>
+                <Input
+                  value={newPolicyName}
+                  onChange={(e) => setNewPolicyName(e.target.value)}
+                  placeholder="e.g., Code of Conduct"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setAddStep('choose')}>Back</Button>
+                <Button onClick={handleFilePolicy} disabled={!newPolicyName.trim()}>
+                  <Upload className="h-4 w-4 mr-1" />
+                  Choose File
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Policy Dialog */}
+      <Dialog open={!!previewPolicy} onOpenChange={() => setPreviewPolicy(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{previewPolicy?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto max-h-[60vh]">
+            {previewPolicy?.contentType === 'text' ? (
+              <p className="text-sm whitespace-pre-wrap">{previewPolicy.textContent}</p>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-3" />
+                <p className="font-medium">{previewPolicy?.fileName}</p>
+                <p className="text-xs mt-1">File preview available after upload to storage</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="bg-muted/50 rounded-xl p-4">
         <p className="text-sm text-muted-foreground text-center">
