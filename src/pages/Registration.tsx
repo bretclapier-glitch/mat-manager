@@ -96,16 +96,25 @@ export default function Registration() {
             <h1 className="text-3xl font-display">REGISTRATION</h1>
             <p className="text-muted-foreground">Manage wrestler registrations and waivers</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline">
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Link
-            </Button>
-            <Button variant="hero">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Wrestler
-            </Button>
-          </div>
+           <div className="flex gap-3">
+             <Button variant="outline" onClick={() => {
+               const pendingCount = registrations.filter(r => r.status === "pending").length;
+               toast.success(`Reminder sent to ${pendingCount} incomplete registrations`, {
+                 description: "Parents will receive an email to complete their registration."
+               });
+             }}>
+               <Bell className="h-4 w-4 mr-2" />
+               Send All Reminders ({registrations.filter(r => r.status === "pending").length})
+             </Button>
+             <Button variant="outline">
+               <Copy className="h-4 w-4 mr-2" />
+               Copy Link
+             </Button>
+             <Button variant="hero">
+               <Plus className="h-4 w-4 mr-2" />
+               Add Wrestler
+             </Button>
+           </div>
         </div>
 
         {/* Stats */}
