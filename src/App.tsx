@@ -80,6 +80,7 @@ const App = () => (
           <Route path="/wrestling/dashboard/store" element={<Store />} />
           <Route path="/wrestling/dashboard/website" element={<Website />} />
           <Route path="/wrestling/dashboard/payments" element={<Payments />} />
+          <Route path="/wrestling/dashboard/payments/setup" element={<StripeSetup />} />
           <Route path="/wrestling/dashboard/settings" element={<Settings />} />
           <Route path="/wrestling/dashboard/members" element={<Members />} />
 

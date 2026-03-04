@@ -65,6 +65,7 @@ const outstandingPayments = [
 ];
 
 export default function Payments() {
+  const navigate = useNavigate();
   const stats = {
     totalRevenue: 8420,
     thisMonth: 2340,
