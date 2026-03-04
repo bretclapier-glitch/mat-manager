@@ -13,9 +13,10 @@ import {
 
 const features = [
   { icon: Users, title: "Roster & Weight Management", desc: "Track wrestlers, weight classes, and USA Wrestling IDs" },
-  { icon: Calendar, title: "Practice & Tournament Scheduling", desc: "Mat assignments, event management, and parent notifications" },
+  { icon: Calendar, title: "Practice & Tournament Scheduling", desc: "Easy to access calendars with comprehensive practice and tournament schedules." },
   { icon: CreditCard, title: "Payments & Registration", desc: "Collect dues, tournament fees, and manage sign-ups online" },
   { icon: Globe, title: "Club Website", desc: "Professional website for your club in minutes" },
+  { icon: MessageSquare, title: "Communication", desc: "Manage all communication from the same portal you manage the rest of your club." },
 ];
 
 const benefits = [
