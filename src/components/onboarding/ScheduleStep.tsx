@@ -17,6 +17,8 @@ export default function ScheduleStep({ data, onChange }: ScheduleStepProps) {
   const [expandedProgram, setExpandedProgram] = useState<string | null>(
     data.programs[0]?.id || null
   );
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState('');
 
   const updateProgram = (id: string, updates: Partial<Program>) => {
     onChange({
