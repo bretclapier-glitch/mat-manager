@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import WrestlingLanding from "./pages/wrestling/Landing";
 import WrestlingLogin from "./pages/wrestling/Login";
 import WrestlingSignup from "./pages/wrestling/Signup";
+import WrestlingContact from "./pages/wrestling/Contact";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Schedule from "./pages/Schedule";
