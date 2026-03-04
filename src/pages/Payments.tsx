@@ -246,7 +246,7 @@ export default function Payments() {
                   <p className="text-white/70">Accept online payments with Stripe integration</p>
                 </div>
               </div>
-              <Button variant="hero" size="lg">
+              <Button variant="hero" size="lg" onClick={() => navigate("/wrestling/dashboard/payments/setup")}>
                 Set Up Payments
               </Button>
             </div>
