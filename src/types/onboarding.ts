@@ -30,6 +30,8 @@ export interface RegistrationField {
 export interface RegistrationPolicy {
   id: string;
   name: string;
+  contentType: 'text' | 'file';
+  textContent?: string;
   fileName?: string;
   required: boolean;
 }
