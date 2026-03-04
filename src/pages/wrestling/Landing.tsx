@@ -50,7 +50,7 @@ export default function WrestlingLanding() {
             RUN YOUR <span className="text-gradient">WRESTLING CLUB</span> LIKE A CHAMPION
           </h1>
           <p className="text-xl text-white/70 mb-10 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            The all-in-one platform built specifically for wrestling clubs. Manage rosters, schedules, payments, and more.
+            The all-in-one platform built by wrestling coaches specifically for wrestling clubs. Manage rosters, schedules, payments, communication and more.
           </p>
           <div className="flex items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
             <Link to="/wrestling/signup">
