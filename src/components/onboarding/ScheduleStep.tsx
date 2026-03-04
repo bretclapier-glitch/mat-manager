@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, Clock, ChevronDown, ChevronUp, Pencil, Check } from "lucide-react";
 import { OnboardingData, Program } from "@/types/onboarding";
 
 interface ScheduleStepProps {
@@ -17,6 +17,8 @@ export default function ScheduleStep({ data, onChange }: ScheduleStepProps) {
   const [expandedProgram, setExpandedProgram] = useState<string | null>(
     data.programs[0]?.id || null
   );
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState('');
 
   const updateProgram = (id: string, updates: Partial<Program>) => {
     onChange({
@@ -76,8 +78,50 @@ export default function ScheduleStep({ data, onChange }: ScheduleStepProps) {
               )}
               className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
             >
-              <div className="text-left">
-                <h3 className="font-semibold">{program.name || 'Unnamed Program'}</h3>
+              <div className="text-left flex items-center gap-2">
+                {editingName === program.id ? (
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Input
+                      value={editNameValue}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      className="h-8 w-48"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          updateProgram(program.id, { name: editNameValue });
+                          setEditingName(null);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateProgram(program.id, { name: editNameValue });
+                        setEditingName(null);
+                      }}
+                      className="p-1 rounded hover:bg-muted"
+                    >
+                      <Check className="h-4 w-4 text-gold" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{program.name || 'Unnamed Program'}</h3>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditNameValue(program.name || '');
+                        setEditingName(program.id);
+                      }}
+                      className="p-1 rounded hover:bg-muted"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
                 {program.seasonStart && program.seasonEnd && (
                   <p className="text-sm text-muted-foreground">
                     {program.seasonStart} - {program.seasonEnd}
