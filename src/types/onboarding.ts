@@ -27,6 +27,13 @@ export interface RegistrationField {
   options?: string[];
 }
 
+export interface RegistrationPolicy {
+  id: string;
+  name: string;
+  fileName?: string;
+  required: boolean;
+}
+
 export interface MessageChannel {
   id: string;
   name: string;
@@ -63,6 +70,7 @@ export interface OnboardingData {
   
   // Registration
   registrationFields: RegistrationField[];
+  registrationPolicies: RegistrationPolicy[];
   
   // Merch
   merchSetupType: 'existing' | 'shopify' | 'none';
@@ -98,6 +106,10 @@ export const defaultOnboardingData: OnboardingData = {
     { id: '3', label: 'Estimated Weight (lbs)', type: 'number', required: true },
     { id: '4', label: 'Experience Level', type: 'select', required: true, options: ['Beginner', 'Intermediate', 'Advanced', 'Competitive'] },
     { id: '5', label: 'City/Town', type: 'text', required: false },
+  ],
+  registrationPolicies: [
+    { id: '1', name: 'Release of Liability', required: true },
+    { id: '2', name: 'Code of Conduct', required: true },
   ],
   merchSetupType: 'none',
   existingMerchStoreName: '',
