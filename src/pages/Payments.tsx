@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ const outstandingPayments = [
 ];
 
 export default function Payments() {
+  const navigate = useNavigate();
   const stats = {
     totalRevenue: 8420,
     thisMonth: 2340,
@@ -246,7 +248,7 @@ export default function Payments() {
                   <p className="text-white/70">Accept online payments with Stripe integration</p>
                 </div>
               </div>
-              <Button variant="hero" size="lg">
+              <Button variant="hero" size="lg" onClick={() => navigate("/wrestling/dashboard/payments/setup")}>
                 Set Up Payments
               </Button>
             </div>

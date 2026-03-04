@@ -19,6 +19,7 @@ import Registration from "./pages/Registration";
 import Store from "./pages/Store";
 import Website from "./pages/Website";
 import Payments from "./pages/Payments";
+import StripeSetup from "./pages/StripeSetup";
 import Settings from "./pages/Settings";
 import Members from "./pages/Members";
 import ClubLayout from "./components/layout/ClubLayout";
@@ -79,6 +80,7 @@ const App = () => (
           <Route path="/wrestling/dashboard/store" element={<Store />} />
           <Route path="/wrestling/dashboard/website" element={<Website />} />
           <Route path="/wrestling/dashboard/payments" element={<Payments />} />
+          <Route path="/wrestling/dashboard/payments/setup" element={<StripeSetup />} />
           <Route path="/wrestling/dashboard/settings" element={<Settings />} />
           <Route path="/wrestling/dashboard/members" element={<Members />} />
 
