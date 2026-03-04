@@ -123,8 +123,8 @@ export default function WrestlingLanding() {
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-display text-navy mb-6">READY TO ELEVATE YOUR CLUB?</h2>
           <p className="text-xl text-navy/70 mb-8 max-w-2xl mx-auto">Join hundreds of wrestling clubs already using HomeTeam</p>
-          <Link to="/wrestling/signup">
-            <Button variant="dark" size="xl">Start Your Free Trial <ArrowRight className="ml-2" /></Button>
+          <Link to="/wrestling/contact">
+            <Button variant="dark" size="xl">Schedule a Demo <ArrowRight className="ml-2" /></Button>
           </Link>
         </div>
       </section>
