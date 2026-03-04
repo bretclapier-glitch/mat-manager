@@ -5,6 +5,7 @@ import {
   CheckCircle,
   Trophy,
   Calendar,
+  MessageSquare,
   Users,
   CreditCard,
   Globe,
