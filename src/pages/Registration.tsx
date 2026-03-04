@@ -15,8 +15,11 @@ import {
   AlertCircle,
   ArrowRight,
   Download,
-  Copy
+  Copy,
+  Send,
+  Bell
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -93,16 +96,25 @@ export default function Registration() {
             <h1 className="text-3xl font-display">REGISTRATION</h1>
             <p className="text-muted-foreground">Manage wrestler registrations and waivers</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline">
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Link
-            </Button>
-            <Button variant="hero">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Wrestler
-            </Button>
-          </div>
+           <div className="flex gap-3">
+             <Button variant="outline" onClick={() => {
+               const pendingCount = registrations.filter(r => r.status === "pending").length;
+               toast.success(`Reminder sent to ${pendingCount} incomplete registrations`, {
+                 description: "Parents will receive an email to complete their registration."
+               });
+             }}>
+               <Bell className="h-4 w-4 mr-2" />
+               Send All Reminders ({registrations.filter(r => r.status === "pending").length})
+             </Button>
+             <Button variant="outline">
+               <Copy className="h-4 w-4 mr-2" />
+               Copy Link
+             </Button>
+             <Button variant="hero">
+               <Plus className="h-4 w-4 mr-2" />
+               Add Wrestler
+             </Button>
+           </div>
         </div>
 
         {/* Stats */}
@@ -201,9 +213,23 @@ export default function Registration() {
                           </span>
                         </td>
                         <td className="py-4">
-                          <Button variant="ghost" size="sm">
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {reg.status === "pending" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toast.success(`Reminder sent to ${reg.parent}`, {
+                                  description: `Nudge to complete ${reg.name}'s registration.`
+                                })}
+                                title="Send reminder"
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm">
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
