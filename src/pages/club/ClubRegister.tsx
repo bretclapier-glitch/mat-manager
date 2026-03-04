@@ -36,7 +36,7 @@ const programs: Record<string, { name: string; price: number; duration: string; 
 const steps = [
   { id: 1, name: "Wrestler Info", icon: User },
   { id: 2, name: "Parent Info", icon: Users },
-  { id: 3, name: "Waiver", icon: FileText },
+  { id: 3, name: "Waivers & Policies", icon: FileText },
   { id: 4, name: "Payment", icon: CreditCard },
   { id: 5, name: "Complete", icon: CheckCircle },
 ];
