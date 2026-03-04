@@ -39,8 +39,8 @@ export default function WrestlingLanding() {
           <Link to="/wrestling/login">
             <Button variant="ghost" className="text-white hover:text-gold">Login</Button>
           </Link>
-          <Link to="/wrestling/signup">
-            <Button variant="hero" size="lg">Get Started</Button>
+          <Link to="/wrestling/contact">
+            <Button variant="hero" size="lg">Schedule a Demo</Button>
           </Link>
         </div>
       </nav>
