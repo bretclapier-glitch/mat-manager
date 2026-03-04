@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import WrestlingLanding from "./pages/wrestling/Landing";
 import WrestlingLogin from "./pages/wrestling/Login";
 import WrestlingSignup from "./pages/wrestling/Signup";
+import WrestlingContact from "./pages/wrestling/Contact";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Schedule from "./pages/Schedule";
@@ -69,6 +70,7 @@ const App = () => (
           <Route path="/wrestling" element={<WrestlingLanding />} />
           <Route path="/wrestling/login" element={<WrestlingLogin />} />
           <Route path="/wrestling/signup" element={<WrestlingSignup />} />
+          <Route path="/wrestling/contact" element={<WrestlingContact />} />
           <Route path="/wrestling/onboarding" element={<Onboarding />} />
           <Route path="/wrestling/dashboard" element={<Dashboard />} />
           <Route path="/wrestling/dashboard/schedule" element={<Schedule />} />
