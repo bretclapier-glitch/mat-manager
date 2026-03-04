@@ -213,9 +213,23 @@ export default function Registration() {
                           </span>
                         </td>
                         <td className="py-4">
-                          <Button variant="ghost" size="sm">
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {reg.status === "pending" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toast.success(`Reminder sent to ${reg.parent}`, {
+                                  description: `Nudge to complete ${reg.name}'s registration.`
+                                })}
+                                title="Send reminder"
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm">
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
