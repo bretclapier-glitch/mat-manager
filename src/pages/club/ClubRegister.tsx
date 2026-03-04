@@ -279,8 +279,8 @@ export default function ClubRegister() {
         {currentStep === 3 && (
           <>
             <CardHeader>
-              <CardTitle className="text-2xl font-display">LIABILITY WAIVER</CardTitle>
-              <CardDescription>Please read and sign the waiver to continue</CardDescription>
+              <CardTitle className="text-2xl font-display">WAIVERS & POLICIES</CardTitle>
+              <CardDescription>Please read and agree to the following to continue</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="h-64 overflow-y-auto p-4 rounded-lg bg-secondary/50 text-sm text-muted-foreground border">
