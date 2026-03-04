@@ -58,8 +58,8 @@ export default function WrestlingLanding() {
             <Link to="/wrestling/contact">
               <Button variant="hero" size="xl">Schedule a Demo <ArrowRight className="ml-2" /></Button>
             </Link>
-            <Link to="/wrestling/dashboard">
-              <Button variant="outline" size="lg" className="border-white/20 text-white hover:bg-white/10">View Demo</Button>
+            <Link to="/wrestling/onboarding">
+              <Button variant="outline" size="lg" className="border-white/20 text-white hover:bg-white/10">Try Setup Wizard</Button>
             </Link>
           </div>
         </div>
