@@ -9,8 +9,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, GripVertical } from "lucide-react";
-import { OnboardingData, RegistrationField } from "@/types/onboarding";
+import { Plus, Trash2, GripVertical, FileText, Upload } from "lucide-react";
+import { OnboardingData, RegistrationField, RegistrationPolicy } from "@/types/onboarding";
+import { useState } from "react";
 import {
   DndContext,
   closestCenter,
