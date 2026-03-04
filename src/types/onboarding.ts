@@ -107,6 +107,10 @@ export const defaultOnboardingData: OnboardingData = {
     { id: '4', label: 'Experience Level', type: 'select', required: true, options: ['Beginner', 'Intermediate', 'Advanced', 'Competitive'] },
     { id: '5', label: 'City/Town', type: 'text', required: false },
   ],
+  registrationPolicies: [
+    { id: '1', name: 'Release of Liability', required: true },
+    { id: '2', name: 'Code of Conduct', required: true },
+  ],
   merchSetupType: 'none',
   existingMerchStoreName: '',
   existingMerchStoreUrl: '',
