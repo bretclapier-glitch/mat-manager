@@ -42,13 +42,13 @@ const baseSteps: Step[] = [
   { id: 'location', title: 'Location', icon: MapPin },
   { id: 'programs', title: 'Programs', icon: Users },
   { id: 'features', title: 'Features', icon: Settings },
-  { id: 'payments', title: 'Payments', icon: CreditCard },
 ];
 
 const featureSteps: Record<string, Step> = {
   website: { id: 'website', title: 'Website', icon: Globe },
   schedule: { id: 'schedule', title: 'Schedule', icon: Calendar },
   messaging: { id: 'messaging', title: 'Messaging', icon: MessageSquare },
+  payments: { id: 'payments', title: 'Payments', icon: CreditCard },
   registration: { id: 'registration', title: 'Registration', icon: ClipboardList },
   merch: { id: 'merch', title: 'Merch', icon: ShoppingBag },
 };
