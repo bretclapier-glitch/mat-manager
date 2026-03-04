@@ -27,6 +27,13 @@ export interface RegistrationField {
   options?: string[];
 }
 
+export interface RegistrationPolicy {
+  id: string;
+  name: string;
+  fileName?: string;
+  required: boolean;
+}
+
 export interface MessageChannel {
   id: string;
   name: string;
