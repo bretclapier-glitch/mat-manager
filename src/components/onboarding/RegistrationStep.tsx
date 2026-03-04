@@ -143,6 +143,8 @@ function SortableField({ field, updateField, removeField }: SortableFieldProps) 
 }
 
 export default function RegistrationStep({ data, onChange }: RegistrationStepProps) {
+  const [newPolicyName, setNewPolicyName] = useState('');
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -185,6 +187,46 @@ export default function RegistrationStep({ data, onChange }: RegistrationStepPro
     }
   };
 
+  const addPolicy = () => {
+    if (!newPolicyName.trim()) return;
+    const policy: RegistrationPolicy = {
+      id: crypto.randomUUID(),
+      name: newPolicyName.trim(),
+      required: true,
+    };
+    onChange({ registrationPolicies: [...(data.registrationPolicies || []), policy] });
+    setNewPolicyName('');
+  };
+
+  const removePolicy = (id: string) => {
+    onChange({ registrationPolicies: (data.registrationPolicies || []).filter(p => p.id !== id) });
+  };
+
+  const togglePolicyRequired = (id: string) => {
+    onChange({
+      registrationPolicies: (data.registrationPolicies || []).map(p =>
+        p.id === id ? { ...p, required: !p.required } : p
+      ),
+    });
+  };
+
+  const handlePolicyFileSelect = (id: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.doc,.docx';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        onChange({
+          registrationPolicies: (data.registrationPolicies || []).map(p =>
+            p.id === id ? { ...p, fileName: file.name } : p
+          ),
+        });
+      }
+    };
+    input.click();
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="text-center mb-8">
@@ -223,6 +265,74 @@ export default function RegistrationStep({ data, onChange }: RegistrationStepPro
         <Plus className="h-5 w-5 mr-2" />
         Add Field
       </Button>
+
+      {/* Policies & Waivers Section */}
+      <div className="pt-4 border-t space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <FileText className="h-5 w-5 text-muted-foreground" />
+            Policies & Waivers
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Add documents that parents must acknowledge during registration
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {(data.registrationPolicies || []).map((policy) => (
+            <div key={policy.id} className="flex items-center gap-3 p-3 rounded-xl border bg-card/50">
+              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="font-medium text-sm">{policy.name}</span>
+                {policy.fileName && (
+                  <p className="text-xs text-muted-foreground truncate">{policy.fileName}</p>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handlePolicyFileSelect(policy.id)}
+                className="text-xs flex-shrink-0"
+              >
+                <Upload className="h-3 w-3 mr-1" />
+                {policy.fileName ? 'Replace' : 'Upload'}
+              </Button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Switch
+                  id={`policy-req-${policy.id}`}
+                  checked={policy.required}
+                  onCheckedChange={() => togglePolicyRequired(policy.id)}
+                />
+                <Label htmlFor={`policy-req-${policy.id}`} className="text-xs">Required</Label>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removePolicy(policy.id)}
+                className="text-destructive hover:text-destructive h-8 w-8 flex-shrink-0"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            value={newPolicyName}
+            onChange={(e) => setNewPolicyName(e.target.value)}
+            placeholder="e.g., Release of Liability, Code of Conduct..."
+            className="flex-1"
+            onKeyDown={(e) => e.key === 'Enter' && addPolicy()}
+          />
+          <Button type="button" variant="outline" onClick={addPolicy}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Policy
+          </Button>
+        </div>
+      </div>
 
       <div className="bg-muted/50 rounded-xl p-4">
         <p className="text-sm text-muted-foreground text-center">
