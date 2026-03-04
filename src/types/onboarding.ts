@@ -70,6 +70,7 @@ export interface OnboardingData {
   
   // Registration
   registrationFields: RegistrationField[];
+  registrationPolicies: RegistrationPolicy[];
   
   // Merch
   merchSetupType: 'existing' | 'shopify' | 'none';
