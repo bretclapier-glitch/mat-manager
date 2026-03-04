@@ -104,8 +104,8 @@ export default function WrestlingLanding() {
                 </li>
               ))}
             </ul>
-            <Link to="/wrestling/signup" className="inline-block mt-8">
-              <Button variant="hero" size="lg">Get Started Today <ArrowRight className="ml-2" /></Button>
+            <Link to="/wrestling/contact" className="inline-block mt-8">
+              <Button variant="hero" size="lg">Schedule a Demo <ArrowRight className="ml-2" /></Button>
             </Link>
           </div>
           <div className="relative">
