@@ -70,6 +70,7 @@ const App = () => (
           <Route path="/wrestling" element={<WrestlingLanding />} />
           <Route path="/wrestling/login" element={<WrestlingLogin />} />
           <Route path="/wrestling/signup" element={<WrestlingSignup />} />
+          <Route path="/wrestling/contact" element={<WrestlingContact />} />
           <Route path="/wrestling/onboarding" element={<Onboarding />} />
           <Route path="/wrestling/dashboard" element={<Dashboard />} />
           <Route path="/wrestling/dashboard/schedule" element={<Schedule />} />
