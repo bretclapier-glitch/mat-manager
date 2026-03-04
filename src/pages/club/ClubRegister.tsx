@@ -156,7 +156,7 @@ export default function ClubRegister() {
               </Alert>
 
               <div className="space-y-2">
-                <Label>USA Wrestling Number *</Label>
+                <Label>USA Wrestling ID *</Label>
                 <Input
                   value={formData.usaWrestlingNumber}
                   onChange={(e) => handleInputChange("usaWrestlingNumber", e.target.value)}
