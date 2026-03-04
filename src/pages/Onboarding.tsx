@@ -42,6 +42,7 @@ const baseSteps: Step[] = [
   { id: 'location', title: 'Location', icon: MapPin },
   { id: 'programs', title: 'Programs', icon: Users },
   { id: 'features', title: 'Features', icon: Settings },
+  { id: 'payments', title: 'Payments', icon: CreditCard },
 ];
 
 const featureSteps: Record<string, Step> = {
