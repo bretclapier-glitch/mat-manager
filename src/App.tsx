@@ -2,10 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Landing from "./pages/Landing";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
+import NotFound from "./pages/NotFound";
+
+// Wrestling imports
+import WrestlingLanding from "./pages/wrestling/Landing";
+import WrestlingLogin from "./pages/wrestling/Login";
+import WrestlingSignup from "./pages/wrestling/Signup";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Schedule from "./pages/Schedule";
@@ -16,9 +20,6 @@ import Website from "./pages/Website";
 import Payments from "./pages/Payments";
 import Settings from "./pages/Settings";
 import Members from "./pages/Members";
-import NotFound from "./pages/NotFound";
-
-// Wrestling club routes
 import ClubLayout from "./components/layout/ClubLayout";
 import ClubHome from "./pages/club/ClubHome";
 import ClubPrograms from "./pages/club/ClubPrograms";
@@ -33,7 +34,11 @@ import ClubParentCalendar from "./pages/club/ClubParentCalendar";
 import ClubParentProfile from "./pages/club/ClubParentProfile";
 import ClubParentStore from "./pages/club/ClubParentStore";
 
-// Baseball routes
+// Baseball imports
+import BaseballLanding from "./pages/baseball/Landing";
+import BaseballLogin from "./pages/baseball/Login";
+import BaseballSignup from "./pages/baseball/Signup";
+import BaseballOnboarding from "./pages/baseball/Onboarding";
 import BaseballDashboard from "./pages/baseball/Dashboard";
 import BaseballPlayers from "./pages/baseball/Players";
 import BaseballSchedule from "./pages/baseball/Schedule";
@@ -46,7 +51,7 @@ import BaseballClubPrograms from "./pages/baseball/club/ClubPrograms";
 import BaseballClubRegister from "./pages/baseball/club/ClubRegister";
 import BaseballClubParentLogin from "./pages/baseball/club/ClubParentLogin";
 import BaseballClubParentDashboard from "./pages/baseball/club/ClubParentDashboard";
-import BaseballOnboarding from "./pages/baseball/Onboarding";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -56,12 +61,14 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* HomeTeam landing */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          {/* Sport picker / shared landing */}
+          <Route path="/" element={<Navigate to="/wrestling" replace />} />
+          <Route path="/home" element={<Landing />} />
 
-          {/* Wrestling admin */}
+          {/* ==================== WRESTLING ==================== */}
+          <Route path="/wrestling" element={<WrestlingLanding />} />
+          <Route path="/wrestling/login" element={<WrestlingLogin />} />
+          <Route path="/wrestling/signup" element={<WrestlingSignup />} />
           <Route path="/wrestling/onboarding" element={<Onboarding />} />
           <Route path="/wrestling/dashboard" element={<Dashboard />} />
           <Route path="/wrestling/dashboard/schedule" element={<Schedule />} />
@@ -91,7 +98,10 @@ const App = () => (
           <Route path="/wrestling/club/:clubSlug/parent/profile" element={<ClubParentProfile />} />
           <Route path="/wrestling/club/:clubSlug/store" element={<ClubParentStore />} />
 
-          {/* Baseball admin */}
+          {/* ==================== BASEBALL ==================== */}
+          <Route path="/baseball" element={<BaseballLanding />} />
+          <Route path="/baseball/login" element={<BaseballLogin />} />
+          <Route path="/baseball/signup" element={<BaseballSignup />} />
           <Route path="/baseball/onboarding" element={<BaseballOnboarding />} />
           <Route path="/baseball/dashboard" element={<BaseballDashboard />} />
           <Route path="/baseball/dashboard/players" element={<BaseballPlayers />} />
@@ -110,6 +120,10 @@ const App = () => (
 
           {/* Baseball parent portal */}
           <Route path="/baseball/club/:clubSlug/parent" element={<BaseballClubParentDashboard />} />
+
+          {/* Legacy redirects */}
+          <Route path="/login" element={<Navigate to="/wrestling/login" replace />} />
+          <Route path="/signup" element={<Navigate to="/wrestling/signup" replace />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
