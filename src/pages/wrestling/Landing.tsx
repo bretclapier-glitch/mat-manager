@@ -55,8 +55,8 @@ export default function WrestlingLanding() {
             The all-in-one platform built by wrestling coaches specifically for wrestling clubs. Manage rosters, schedules, payments, communication and more.
           </p>
           <div className="flex items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <Link to="/wrestling/signup">
-              <Button variant="hero" size="xl">Start Your Free Trial <ArrowRight className="ml-2" /></Button>
+            <Link to="/wrestling/contact">
+              <Button variant="hero" size="xl">Schedule a Demo <ArrowRight className="ml-2" /></Button>
             </Link>
             <Link to="/wrestling/dashboard">
               <Button variant="outline" size="lg" className="border-white/20 text-white hover:bg-white/10">View Demo</Button>
