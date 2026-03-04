@@ -39,8 +39,8 @@ export default function WrestlingLanding() {
           <Link to="/wrestling/login">
             <Button variant="ghost" className="text-white hover:text-gold">Login</Button>
           </Link>
-          <Link to="/wrestling/signup">
-            <Button variant="hero" size="lg">Get Started</Button>
+          <Link to="/wrestling/contact">
+            <Button variant="hero" size="lg">Schedule a Demo</Button>
           </Link>
         </div>
       </nav>
@@ -55,8 +55,8 @@ export default function WrestlingLanding() {
             The all-in-one platform built by wrestling coaches specifically for wrestling clubs. Manage rosters, schedules, payments, communication and more.
           </p>
           <div className="flex items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <Link to="/wrestling/signup">
-              <Button variant="hero" size="xl">Start Your Free Trial <ArrowRight className="ml-2" /></Button>
+            <Link to="/wrestling/contact">
+              <Button variant="hero" size="xl">Schedule a Demo <ArrowRight className="ml-2" /></Button>
             </Link>
             <Link to="/wrestling/dashboard">
               <Button variant="outline" size="lg" className="border-white/20 text-white hover:bg-white/10">View Demo</Button>
@@ -104,8 +104,8 @@ export default function WrestlingLanding() {
                 </li>
               ))}
             </ul>
-            <Link to="/wrestling/signup" className="inline-block mt-8">
-              <Button variant="hero" size="lg">Get Started Today <ArrowRight className="ml-2" /></Button>
+            <Link to="/wrestling/contact" className="inline-block mt-8">
+              <Button variant="hero" size="lg">Schedule a Demo <ArrowRight className="ml-2" /></Button>
             </Link>
           </div>
           <div className="relative">
@@ -123,8 +123,8 @@ export default function WrestlingLanding() {
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-display text-navy mb-6">READY TO ELEVATE YOUR CLUB?</h2>
           <p className="text-xl text-navy/70 mb-8 max-w-2xl mx-auto">Join hundreds of wrestling clubs already using HomeTeam</p>
-          <Link to="/wrestling/signup">
-            <Button variant="dark" size="xl">Start Your Free Trial <ArrowRight className="ml-2" /></Button>
+          <Link to="/wrestling/contact">
+            <Button variant="dark" size="xl">Schedule a Demo <ArrowRight className="ml-2" /></Button>
           </Link>
         </div>
       </section>
