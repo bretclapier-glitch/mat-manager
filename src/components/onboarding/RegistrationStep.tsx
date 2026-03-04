@@ -143,7 +143,11 @@ function SortableField({ field, updateField, removeField }: SortableFieldProps) 
 }
 
 export default function RegistrationStep({ data, onChange }: RegistrationStepProps) {
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addStep, setAddStep] = useState<'choose' | 'text' | 'file'>('choose');
   const [newPolicyName, setNewPolicyName] = useState('');
+  const [newPolicyText, setNewPolicyText] = useState('');
+  const [previewPolicy, setPreviewPolicy] = useState<RegistrationPolicy | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -176,26 +180,53 @@ export default function RegistrationStep({ data, onChange }: RegistrationStepPro
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
       const oldIndex = data.registrationFields.findIndex(f => f.id === active.id);
       const newIndex = data.registrationFields.findIndex(f => f.id === over.id);
-      
-      onChange({
-        registrationFields: arrayMove(data.registrationFields, oldIndex, newIndex)
-      });
+      onChange({ registrationFields: arrayMove(data.registrationFields, oldIndex, newIndex) });
     }
   };
 
-  const addPolicy = () => {
-    if (!newPolicyName.trim()) return;
+  const openAddDialog = () => {
+    setAddStep('choose');
+    setNewPolicyName('');
+    setNewPolicyText('');
+    setShowAddDialog(true);
+  };
+
+  const saveTextPolicy = () => {
+    if (!newPolicyName.trim() || !newPolicyText.trim()) return;
     const policy: RegistrationPolicy = {
       id: crypto.randomUUID(),
       name: newPolicyName.trim(),
+      contentType: 'text',
+      textContent: newPolicyText.trim(),
       required: true,
     };
     onChange({ registrationPolicies: [...(data.registrationPolicies || []), policy] });
-    setNewPolicyName('');
+    setShowAddDialog(false);
+  };
+
+  const handleFilePolicy = () => {
+    if (!newPolicyName.trim()) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.doc,.docx';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const policy: RegistrationPolicy = {
+          id: crypto.randomUUID(),
+          name: newPolicyName.trim(),
+          contentType: 'file',
+          fileName: file.name,
+          required: true,
+        };
+        onChange({ registrationPolicies: [...(data.registrationPolicies || []), policy] });
+        setShowAddDialog(false);
+      }
+    };
+    input.click();
   };
 
   const removePolicy = (id: string) => {
@@ -208,23 +239,6 @@ export default function RegistrationStep({ data, onChange }: RegistrationStepPro
         p.id === id ? { ...p, required: !p.required } : p
       ),
     });
-  };
-
-  const handlePolicyFileSelect = (id: string) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.doc,.docx';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        onChange({
-          registrationPolicies: (data.registrationPolicies || []).map(p =>
-            p.id === id ? { ...p, fileName: file.name } : p
-          ),
-        });
-      }
-    };
-    input.click();
   };
 
   return (

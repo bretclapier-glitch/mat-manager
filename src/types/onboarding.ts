@@ -110,8 +110,8 @@ export const defaultOnboardingData: OnboardingData = {
     { id: '5', label: 'City/Town', type: 'text', required: false },
   ],
   registrationPolicies: [
-    { id: '1', name: 'Release of Liability', required: true },
-    { id: '2', name: 'Code of Conduct', required: true },
+    { id: '1', name: 'Release of Liability', contentType: 'text', required: true },
+    { id: '2', name: 'Code of Conduct', contentType: 'text', required: true },
   ],
   merchSetupType: 'none',
   existingMerchStoreName: '',
