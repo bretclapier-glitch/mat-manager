@@ -8,8 +8,8 @@ import NotFound from "./pages/NotFound";
 
 // Wrestling imports
 import WrestlingLanding from "./pages/wrestling/Landing";
-import WrestlingLogin from "./pages/wrestling/Login";
-import WrestlingSignup from "./pages/wrestling/Signup";
+import WrestlingLogin from "./pages/Login";
+import WrestlingSignup from "./pages/Signup";
 import WrestlingContact from "./pages/wrestling/Contact";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
