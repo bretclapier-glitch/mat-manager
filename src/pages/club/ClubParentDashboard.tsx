@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,14 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useClubData } from "@/components/layout/ClubLayout";
 import ParentDashboardLayout from "@/components/layout/ParentDashboardLayout";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Trophy,
   Calendar,
   Bell,
   CreditCard,
-  FileText,
   User,
-  LogOut,
   Plus,
   CheckCircle,
   Clock,
@@ -21,178 +22,325 @@ import {
   ShoppingBag,
   MessageSquare,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 
-const parentInfo = { name: "David Johnson", email: "david.johnson@email.com" };
+type Wrestler = {
+  id: string;
+  full_name: string;
+  date_of_birth: string | null;
+  program: string;
+  status: string;
+  weight_class: string | null;
+};
 
-const wrestlers = [
-  { id: 1, name: "Marcus Johnson", age: 12, program: "Middle School", status: "active", nextPractice: "Tomorrow, 4:00 PM", attendance: 85, upcomingEvents: 2 },
-  { id: 2, name: "Emma Johnson", age: 8, program: "Youth Wrestling", status: "active", nextPractice: "Today, 5:00 PM", attendance: 92, upcomingEvents: 1 },
-];
+type Event = {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+  event_type: string;
+};
 
-const upcomingEvents = [
-  { id: 1, title: "Regular Practice", date: "Feb 5, 2024", time: "5:00 PM - 6:00 PM", location: "Main Gym", wrestler: "Emma Johnson", type: "practice" },
-  { id: 2, title: "Regular Practice", date: "Feb 6, 2024", time: "4:00 PM - 5:30 PM", location: "Main Gym", wrestler: "Marcus Johnson", type: "practice" },
-  { id: 3, title: "Austin Youth Tournament", date: "Feb 10, 2024", time: "8:00 AM - 4:00 PM", location: "Austin Convention Center", wrestler: "Both", type: "tournament" },
-];
+type Payment = {
+  id: string;
+  description: string;
+  amount: number;
+  status: string;
+  created_at: string;
+};
 
-const recentPayments = [
-  { id: 1, description: "Middle School Registration", amount: 225, date: "Jan 15, 2024", status: "paid" },
-  { id: 2, description: "Youth Wrestling Registration", amount: 175, date: "Jan 15, 2024", status: "paid" },
-  { id: 3, description: "Tournament Fee - Austin Youth", amount: 35, date: "Feb 1, 2024", status: "pending" },
-];
-
-const announcements = [
-  { id: 1, title: "Practice Cancelled Feb 8", message: "Due to facility maintenance, practice is cancelled on Thursday Feb 8.", date: "Feb 3, 2024", priority: "high" },
-  { id: 2, title: "Tournament Registration Open", message: "Registration for the State Championship qualifier is now open.", date: "Feb 2, 2024", priority: "normal" },
-];
+type Announcement = {
+  id: string;
+  title: string;
+  message: string;
+  priority: string;
+  created_at: string;
+};
 
 export default function ClubParentDashboard() {
   const { clubSlug } = useParams();
   const club = useClubData();
+  const { profile } = useAuth();
   const basePath = `/wrestling/club/${clubSlug}`;
+
+  const [wrestlers, setWrestlers] = useState<Wrestler[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (profile?.id && club?.id) {
+      loadParentData(profile.id, club.id);
+    }
+  }, [profile, club]);
+
+  async function loadParentData(parentId: string, clubId: string) {
+    setLoading(true);
+    try {
+      const [
+        { data: wrestlerData },
+        { data: eventData },
+        { data: paymentData },
+        { data: announcementData },
+      ] = await Promise.all([
+        supabase.from('wrestlers').select('*').eq('parent_id', parentId).eq('club_id', clubId).eq('status', 'active'),
+        supabase.from('events').select('*').eq('club_id', clubId).gte('start_time', new Date().toISOString()).order('start_time').limit(5),
+        supabase.from('payments').select('*').eq('parent_id', parentId).eq('club_id', clubId).order('created_at', { ascending: false }).limit(5),
+        supabase.from('announcements').select('*').eq('club_id', clubId).order('created_at', { ascending: false }).limit(5),
+      ]);
+
+      setWrestlers((wrestlerData ?? []) as Wrestler[]);
+      setEvents((eventData ?? []) as Event[]);
+      setPayments((paymentData ?? []) as Payment[]);
+      setAnnouncements((announcementData ?? []) as Announcement[]);
+    } catch (err) {
+      console.error('Parent dashboard load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getAge(dob: string | null) {
+    if (!dob) return null;
+    const diff = Date.now() - new Date(dob).getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+  }
+
+  function formatEventDate(isoString: string) {
+    const date = new Date(isoString);
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatEventTime(isoString: string) {
+    return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  const highPriorityAlert = announcements.find(a => a.priority === 'high');
+  const hasPendingPayment = payments.some(p => p.status === 'pending');
 
   return (
     <ParentDashboardLayout>
       <div>
-        {/* Welcome */}
         <div className="mb-8">
-          <h1 className="text-3xl font-display mb-2">WELCOME BACK, {parentInfo.name.split(" ")[0].toUpperCase()}</h1>
+          <h1 className="text-3xl font-display mb-2">
+            WELCOME BACK, {profile?.full_name?.split(" ")[0]?.toUpperCase() ?? "PARENT"}
+          </h1>
           <p className="text-muted-foreground">Manage your wrestlers, view schedules, and stay up to date.</p>
         </div>
 
-        {/* Alert */}
-      {announcements.some((a) => a.priority === "high") && (
-        <Card className="mb-6 border-wrestling-red bg-wrestling-red/5">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-wrestling-red shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-wrestling-red">{announcements.find((a) => a.priority === "high")?.title}</p>
-              <p className="text-sm text-muted-foreground">{announcements.find((a) => a.priority === "high")?.message}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {highPriorityAlert && (
+          <Card className="mb-6 border-wrestling-red bg-wrestling-red/5">
+            <CardContent className="p-4 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-wrestling-red shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-wrestling-red">{highPriorityAlert.title}</p>
+                <p className="text-sm text-muted-foreground">{highPriorityAlert.message}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Wrestlers */}
-          <Card className="shadow-card">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle className="text-xl font-display">MY WRESTLERS</CardTitle>
-              <Link to={`${basePath}/programs`}>
-                <Button variant="outline" size="sm"><Plus className="h-4 w-4 mr-2" />Add Wrestler</Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {wrestlers.map((w) => (
-                <Link key={w.id} to={`${basePath}/parent/wrestler/${w.id}`} className="block p-4 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors cursor-pointer">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-navy text-white">{w.name.split(" ").map((n) => n[0]).join("")}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold">{w.name}</h3>
-                        <p className="text-sm text-muted-foreground">{w.program} • Age {w.age}</p>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-gold" />
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+
+              {/* Wrestlers */}
+              <Card className="shadow-card">
+                <CardHeader className="flex-row items-center justify-between">
+                  <CardTitle className="text-xl font-display">MY WRESTLERS</CardTitle>
+                  <Link to={`${basePath}/programs`}>
+                    <Button variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-2" />Add Wrestler
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {wrestlers.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Trophy className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p>No wrestlers registered yet</p>
+                      <Link to={`${basePath}/programs`}>
+                        <Button variant="outline" size="sm" className="mt-3">Browse Programs</Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    wrestlers.map((w) => (
+                      <div key={w.id} className="block p-4 rounded-lg bg-secondary/50">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-12 w-12">
+                              <AvatarFallback className="bg-navy text-white">
+                                {w.full_name.split(" ").map((n) => n[0]).join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h3 className="font-semibold">{w.full_name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {w.program}{getAge(w.date_of_birth) ? ` • Age ${getAge(w.date_of_birth)}` : ''}
+                                {w.weight_class ? ` • ${w.weight_class}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="bg-wrestling-green/10 text-wrestling-green border-wrestling-green/20">
+                            {w.status}
+                          </Badge>
+                        </div>
                       </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Schedule */}
+              <Card className="shadow-card">
+                <CardHeader className="flex-row items-center justify-between">
+                  <CardTitle className="text-xl font-display">UPCOMING SCHEDULE</CardTitle>
+                  <Link to={`${basePath}/parent/calendar`}>
+                    <Button variant="outline" size="sm">
+                      <Calendar className="h-4 w-4 mr-2" />Calendar
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {events.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Calendar className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p>No upcoming events scheduled</p>
                     </div>
-                    <Badge variant="outline" className="bg-wrestling-green/10 text-wrestling-green border-wrestling-green/20">{w.status}</Badge>
-                  </div>
-                  <div className="grid sm:grid-cols-3 gap-4 text-sm">
-                    <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-gold" /><span>Next: {w.nextPractice}</span></div>
-                    <div className="flex items-center gap-2"><Trophy className="h-4 w-4 text-gold" /><span>{w.upcomingEvents} upcoming</span></div>
-                    <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-wrestling-green" /><span>{w.attendance}% attendance</span></div>
-                  </div>
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
+                  ) : (
+                    events.map((event) => (
+                      <div key={event.id} className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50">
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                          event.event_type === "tournament" ? "bg-gold/20 text-gold" : "bg-navy/10 text-navy"
+                        }`}>
+                          {event.event_type === "tournament"
+                            ? <Trophy className="h-6 w-6" />
+                            : <Calendar className="h-6 w-6" />}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium">{event.title}</h4>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                            <span>{formatEventDate(event.start_time)}</span>
+                            <span>{formatEventTime(event.start_time)} – {formatEventTime(event.end_time)}</span>
+                            {event.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />{event.location}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Schedule */}
-          <Card className="shadow-card">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle className="text-xl font-display">UPCOMING SCHEDULE</CardTitle>
-              <Link to={`${basePath}/parent/calendar`}>
-                <Button variant="outline" size="sm"><Calendar className="h-4 w-4 mr-2" />Calendar</Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {upcomingEvents.map((event) => (
-                <Link key={event.id} to={`${basePath}/parent/event/${event.id}`} className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors cursor-pointer">
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${event.type === "tournament" ? "bg-gold/20 text-gold" : "bg-navy/10 text-navy"}`}>
-                    {event.type === "tournament" ? <Trophy className="h-6 w-6" /> : <Calendar className="h-6 w-6" />}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium">{event.title}</h4>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      <span>{event.date}</span>
-                      <span>{event.time}</span>
-                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{event.location}</span>
-                    </div>
-                    <Badge variant="secondary" className="mt-2 text-xs">{event.wrestler}</Badge>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+            {/* Sidebar */}
+            <div className="space-y-6">
+              <Card className="shadow-card">
+                <CardHeader><CardTitle className="text-xl font-display">QUICK ACTIONS</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-3 gap-3">
+                  <Link to={`${basePath}/parent/messages`}>
+                    <Button variant="outline" className="flex-col h-auto py-4 w-full">
+                      <MessageSquare className="h-5 w-5 mb-2" /><span className="text-xs">Messages</span>
+                    </Button>
+                  </Link>
+                  <Link to={`${basePath}/store`}>
+                    <Button variant="outline" className="flex-col h-auto py-4 w-full">
+                      <ShoppingBag className="h-5 w-5 mb-2" /><span className="text-xs">Shop</span>
+                    </Button>
+                  </Link>
+                  <Link to={`${basePath}/parent/profile`}>
+                    <Button variant="outline" className="flex-col h-auto py-4 w-full">
+                      <User className="h-5 w-5 mb-2" /><span className="text-xs">Profile</span>
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <Card className="shadow-card">
-            <CardHeader><CardTitle className="text-xl font-display">QUICK ACTIONS</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-3 gap-3">
-              <Link to={`${basePath}/parent/messages`}><Button variant="outline" className="flex-col h-auto py-4 w-full"><MessageSquare className="h-5 w-5 mb-2" /><span className="text-xs">Messages</span></Button></Link>
-              <Link to={`${basePath}/store`}><Button variant="outline" className="flex-col h-auto py-4 w-full"><ShoppingBag className="h-5 w-5 mb-2" /><span className="text-xs">Shop</span></Button></Link>
-              <Link to={`${basePath}/parent/profile`}><Button variant="outline" className="flex-col h-auto py-4 w-full"><User className="h-5 w-5 mb-2" /><span className="text-xs">Profile</span></Button></Link>
-            </CardContent>
-          </Card>
+              <Card className="shadow-card">
+                <CardHeader className="flex-row items-center justify-between">
+                  <CardTitle className="text-xl font-display">PAYMENTS</CardTitle>
+                  <Link to={`${basePath}/parent/payments`}>
+                    <Button variant="ghost" size="sm">View All</Button>
+                  </Link>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {payments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No payments yet</p>
+                  ) : (
+                    payments.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                        <div className="flex items-center gap-3">
+                          {p.status === "paid"
+                            ? <CheckCircle className="h-5 w-5 text-wrestling-green" />
+                            : <Clock className="h-5 w-5 text-gold" />}
+                          <div>
+                            <p className="text-sm font-medium">{p.description}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(p.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">${p.amount}</p>
+                          <Badge
+                            variant={p.status === "paid" ? "secondary" : "outline"}
+                            className={`text-xs ${p.status === "pending" ? "border-gold text-gold" : ""}`}
+                          >
+                            {p.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {hasPendingPayment && (
+                    <Button variant="hero" className="w-full mt-2">
+                      <CreditCard className="h-4 w-4 mr-2" />Pay Outstanding Balance
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
 
-          <Card className="shadow-card">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle className="text-xl font-display">PAYMENTS</CardTitle>
-              <Button variant="ghost" size="sm">View All</Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {recentPayments.map((p) => (
-                <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                  <div className="flex items-center gap-3">
-                    {p.status === "paid" ? <CheckCircle className="h-5 w-5 text-wrestling-green" /> : <Clock className="h-5 w-5 text-gold" />}
-                    <div><p className="text-sm font-medium">{p.description}</p><p className="text-xs text-muted-foreground">{p.date}</p></div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">${p.amount}</p>
-                    <Badge variant={p.status === "paid" ? "secondary" : "outline"} className={`text-xs ${p.status === "pending" ? "border-gold text-gold" : ""}`}>{p.status}</Badge>
-                  </div>
-                </div>
-              ))}
-              {recentPayments.some((p) => p.status === "pending") && (
-                <Button variant="hero" className="w-full mt-2"><CreditCard className="h-4 w-4 mr-2" />Pay Outstanding Balance</Button>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card">
-            <CardHeader><CardTitle className="text-xl font-display">ANNOUNCEMENTS</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {announcements.map((a) => (
-                <div key={a.id} className={`p-3 rounded-lg ${a.priority === "high" ? "bg-wrestling-red/10 border border-wrestling-red/20" : "bg-secondary/50"}`}>
-                  <div className="flex items-start gap-2">
-                    <Bell className={`h-4 w-4 mt-0.5 ${a.priority === "high" ? "text-wrestling-red" : "text-gold"}`} />
-                    <div>
-                      <p className="text-sm font-medium">{a.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{a.message}</p>
-                      <p className="text-xs text-muted-foreground mt-2">{a.date}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              <Card className="shadow-card">
+                <CardHeader><CardTitle className="text-xl font-display">ANNOUNCEMENTS</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {announcements.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No announcements</p>
+                  ) : (
+                    announcements.map((a) => (
+                      <div key={a.id} className={`p-3 rounded-lg ${
+                        a.priority === "high"
+                          ? "bg-wrestling-red/10 border border-wrestling-red/20"
+                          : "bg-secondary/50"
+                      }`}>
+                        <div className="flex items-start gap-2">
+                          <Bell className={`h-4 w-4 mt-0.5 ${a.priority === "high" ? "text-wrestling-red" : "text-gold"}`} />
+                          <div>
+                            <p className="text-sm font-medium">{a.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{a.message}</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {new Date(a.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
       </div>
     </ParentDashboardLayout>
   );
