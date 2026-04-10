@@ -62,9 +62,11 @@ export default function Onboarding() {
   const [clubName, setClubName] = useState('');
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(defaultOnboardingData);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function saveClubToSupabase() {
     setSaving(true);
+    setSaveError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -72,54 +74,96 @@ export default function Onboarding() {
         return;
       }
 
-      const name = onboardingData.clubName ?? 'My Wrestling Club';
-      const slug = name
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-]/g, '');
-      const uniqueSlug = `${slug}-${user.id.slice(0, 6)}`;
-
-      // Check if user already has a club
+      // Get existing profile to find club_id
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('club_id')
         .eq('id', user.id)
         .single();
 
-      if (existingProfile?.club_id) {
-        // Already has a club — just update it
+      let clubId = existingProfile?.club_id;
+
+      const name = onboardingData.clubName ?? clubName ?? 'My Wrestling Club';
+      const slug = name
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+      const uniqueSlug = `${slug}-${user.id.slice(0, 6)}`;
+
+      const clubData = {
+        name,
+        tagline: onboardingData.tagline ?? 'Building champions on and off the mat',
+        description: onboardingData.description ?? '',
+        phone: onboardingData.phone ?? '',
+        website_url: onboardingData.website ?? '',
+        address: onboardingData.address ?? '',
+        city: onboardingData.city ?? '',
+        state: onboardingData.state ?? '',
+        zip: onboardingData.zip ?? '',
+        primary_color: onboardingData.primaryColor ?? '#d4a739',
+        secondary_color: onboardingData.secondaryColor ?? '#1a1f36',
+        selected_features: onboardingData.selectedFeatures ?? [],
+        merch_setup_type: onboardingData.merchSetupType ?? 'none',
+        merch_store_url: onboardingData.existingMerchStoreUrl ?? '',
+        enable_direct_messages: onboardingData.enableDirectMessages ?? true,
+        enable_email_notifications: onboardingData.enableEmailNotifications ?? true,
+      };
+
+      if (clubId) {
+        // Update existing club
         await supabase
           .from('clubs')
-          .update({
-            name,
-            tagline: onboardingData.tagline ?? 'Building champions on and off the mat',
-          })
-          .eq('id', existingProfile.club_id);
+          .update(clubData)
+          .eq('id', clubId);
       } else {
         // Create new club
-        const { data: club, error } = await supabase
+        const { data: newClub, error: clubError } = await supabase
           .from('clubs')
-          .insert({
-            name,
-            slug: uniqueSlug,
-            tagline: onboardingData.tagline ?? 'Building champions on and off the mat',
-          })
+          .insert({ ...clubData, slug: uniqueSlug })
           .select()
           .single();
 
-        if (!error && club) {
-          await supabase
-            .from('profiles')
-            .update({ club_id: club.id })
-            .eq('id', user.id);
-        }
+        if (clubError) throw clubError;
+        clubId = newClub.id;
+
+        // Link profile to club
+        await supabase
+          .from('profiles')
+          .update({ club_id: clubId })
+          .eq('id', user.id);
+      }
+
+      // Save programs
+      if (onboardingData.programs && onboardingData.programs.length > 0 && clubId) {
+        // Delete existing programs first to avoid duplicates
+        await supabase
+          .from('programs')
+          .delete()
+          .eq('club_id', clubId);
+
+        // Insert all programs
+        const programsToInsert = onboardingData.programs.map(p => ({
+          club_id: clubId,
+          name: p.name,
+          description: p.description ?? '',
+          season_start: p.seasonStart ?? null,
+          season_end: p.seasonEnd ?? null,
+          practice_days: p.practiceDays ?? [],
+          practice_time: p.practiceTime ?? null,
+          practice_end_time: p.practiceEndTime ?? null,
+          price: p.price ?? null,
+          payment_type: p.paymentType ?? 'one-time',
+          competitions: p.competitions ?? [],
+        }));
+
+        await supabase.from('programs').insert(programsToInsert);
       }
 
       sessionStorage.setItem('onboardingData', JSON.stringify(onboardingData));
       navigate("/wrestling/dashboard");
     } catch (err) {
       console.error('Error saving club:', err);
-      navigate("/wrestling/dashboard");
+      setSaveError('Something went wrong saving your data. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -276,18 +320,29 @@ export default function Onboarding() {
         <div className="bg-card rounded-2xl shadow-card p-8">
           {renderStepContent()}
 
+          {saveError && (
+            <div className="mt-4 p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
+              {saveError}
+            </div>
+          )}
+
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t">
             <Button
               variant="outline"
               onClick={handleBack}
-              disabled={currentStepIndex === 0}
+              disabled={currentStepIndex === 0 || saving}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <Button variant="hero" onClick={handleNext} disabled={saving}>
-              {saving ? "Saving..." : currentStepIndex === steps.length - 1 ? "Complete Setup" : "Continue"}
+              {saving 
+                ? "Saving your club..." 
+                : currentStepIndex === steps.length - 1 
+                  ? "Complete Setup" 
+                  : "Continue"
+              }
               {!saving && <ArrowRight className="h-4 w-4 ml-2" />}
             </Button>
           </div>
