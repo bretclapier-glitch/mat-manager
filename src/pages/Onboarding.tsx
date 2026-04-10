@@ -97,9 +97,7 @@ export default function Onboarding() {
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
-      // Save onboarding data and navigate to dashboard
-      sessionStorage.setItem('onboardingData', JSON.stringify(onboardingData));
-      navigate("/wrestling/dashboard");
+  await saveClubToSupabase();
     }
   };
 
