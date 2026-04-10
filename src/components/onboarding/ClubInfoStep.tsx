@@ -18,8 +18,17 @@ export default function ClubInfoStep({ data, onChange }: ClubInfoStepProps) {
       </div>
 
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="description">Club Description</Label>
+  <div className="space-y-2">
+    <Label htmlFor="clubName">Club Name</Label>
+    <Input
+      id="clubName"
+      placeholder="e.g., Westside Wrestling Club"
+      value={data.clubName ?? ''}
+      onChange={(e) => onChange({ clubName: e.target.value })}
+    />
+  </div>
+  <div className="space-y-2">
+    <Label htmlFor="description">Club Description</Label>
           <Textarea
             id="description"
             placeholder="Tell us about your wrestling club's history, mission, and what makes it special..."
