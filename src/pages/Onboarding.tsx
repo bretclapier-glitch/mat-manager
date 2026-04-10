@@ -30,6 +30,7 @@ import RegistrationStep from "@/components/onboarding/RegistrationStep";
 import BrandingStep from "@/components/onboarding/BrandingStep";
 import MessagingStep from "@/components/onboarding/MessagingStep";
 import MerchStep from "@/components/onboarding/MerchStep";
+import { supabase } from "@/lib/supabase";
 
 interface Step {
   id: string;
@@ -60,6 +61,69 @@ export default function Onboarding() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [clubName, setClubName] = useState('');
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(defaultOnboardingData);
+  const [saving, setSaving] = useState(false);
+
+  async function saveClubToSupabase() {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/wrestling/dashboard");
+        return;
+      }
+
+      const name = onboardingData.clubName ?? 'My Wrestling Club';
+      const slug = name
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+      const uniqueSlug = `${slug}-${user.id.slice(0, 6)}`;
+
+      // Check if user already has a club
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('club_id')
+        .eq('id', user.id)
+        .single();
+
+      if (existingProfile?.club_id) {
+        // Already has a club — just update it
+        await supabase
+          .from('clubs')
+          .update({
+            name,
+            tagline: onboardingData.tagline ?? 'Building champions on and off the mat',
+          })
+          .eq('id', existingProfile.club_id);
+      } else {
+        // Create new club
+        const { data: club, error } = await supabase
+          .from('clubs')
+          .insert({
+            name,
+            slug: uniqueSlug,
+            tagline: onboardingData.tagline ?? 'Building champions on and off the mat',
+          })
+          .select()
+          .single();
+
+        if (!error && club) {
+          await supabase
+            .from('profiles')
+            .update({ club_id: club.id })
+            .eq('id', user.id);
+        }
+      }
+
+      sessionStorage.setItem('onboardingData', JSON.stringify(onboardingData));
+      navigate("/wrestling/dashboard");
+    } catch (err) {
+      console.error('Error saving club:', err);
+      navigate("/wrestling/dashboard");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   // Load club name from signup
   useEffect(() => {
@@ -74,7 +138,6 @@ export default function Onboarding() {
   const steps = useMemo(() => {
     const dynamicSteps = [...baseSteps];
     
-    // Add feature-specific steps in order
     const featureOrder = ['website', 'schedule', 'messaging', 'payments', 'registration', 'merch'];
     featureOrder.forEach(feature => {
       if (onboardingData.selectedFeatures.includes(feature) && featureSteps[feature]) {
@@ -93,11 +156,11 @@ export default function Onboarding() {
     setOnboardingData(prev => ({ ...prev, ...updates }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
-  await saveClubToSupabase();
+      await saveClubToSupabase();
     }
   };
 
@@ -136,7 +199,6 @@ export default function Onboarding() {
     }
   };
 
-  // Find completed step indices for progress display
   const getStepStatus = (stepIndex: number) => {
     if (stepIndex < currentStepIndex) return 'completed';
     if (stepIndex === currentStepIndex) return 'current';
@@ -163,7 +225,6 @@ export default function Onboarding() {
       {/* Progress */}
       <div className="container mx-auto px-6 py-8 max-w-3xl">
         <div className="mb-8">
-          {/* Step indicators - show max 6 */}
           <div className="flex items-center justify-between mb-4 overflow-x-auto pb-2">
             {steps.slice(0, 6).map((step, index) => {
               const status = getStepStatus(index);
@@ -225,9 +286,9 @@ export default function Onboarding() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <Button variant="hero" onClick={handleNext}>
-              {currentStepIndex === steps.length - 1 ? "Complete Setup" : "Continue"}
-              <ArrowRight className="h-4 w-4 ml-2" />
+            <Button variant="hero" onClick={handleNext} disabled={saving}>
+              {saving ? "Saving..." : currentStepIndex === steps.length - 1 ? "Complete Setup" : "Continue"}
+              {!saving && <ArrowRight className="h-4 w-4 ml-2" />}
             </Button>
           </div>
         </div>
