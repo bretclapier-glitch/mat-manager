@@ -45,6 +45,7 @@ export interface MessageChannel {
 
 export interface OnboardingData {
   // Club Info
+  clubName: string;
   description: string;
   phone: string;
   website: string;
@@ -85,6 +86,7 @@ export interface OnboardingData {
 }
 
 export const defaultOnboardingData: OnboardingData = {
+  clubName: '',
   description: '',
   phone: '',
   website: '',
