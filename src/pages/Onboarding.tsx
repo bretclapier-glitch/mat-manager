@@ -83,7 +83,7 @@ export default function Onboarding() {
 
       let clubId = existingProfile?.club_id;
 
-      const name = onboardingData.clubName ?? clubName ?? 'My Wrestling Club';
+      const name = onboardingData.clubName || clubName || 'My Wrestling Club';
       const slug = name
         .toLowerCase()
         .replace(/\s+/g, '-')
@@ -92,7 +92,7 @@ export default function Onboarding() {
 
       const clubData = {
         name,
-        tagline: onboardingData.tagline ?? 'Building champions on and off the mat',
+        tagline: 'Building champions on and off the mat',
         description: onboardingData.description ?? '',
         phone: onboardingData.phone ?? '',
         website_url: onboardingData.website ?? '',
