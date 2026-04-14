@@ -27,13 +27,19 @@ export default function Signup() {
     }
 
     setLoading(true);
-    const { error } = await signUp(email, password, fullName, role);
+    const { error: signUpError } = await signUp(email, password, fullName, role);
 
-    if (error) {
-      setError(error.message);
+    if (signUpError) {
+      setError(signUpError.message);
       setLoading(false);
-    } else {
+      return;
+    }
+
+    if (role === "coach") {
       navigate("/wrestling/onboarding");
+    } else {
+      // Parents go to login — they access their dashboard via the club page
+      navigate("/wrestling/login");
     }
   }
 
@@ -57,88 +63,37 @@ export default function Signup() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="John Smith"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
+                <Input id="fullName" type="text" placeholder="John Smith" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Min. 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <Input id="password" type="password" placeholder="Min. 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
-
               <div className="space-y-2">
                 <Label>I am a...</Label>
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRole("parent")}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      role === "parent"
-                        ? "border-gold bg-gold/10 text-gold"
-                        : "border-border hover:border-gold/50"
-                    }`}
-                  >
+                  <button type="button" onClick={() => setRole("parent")} className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${role === "parent" ? "border-gold bg-gold/10 text-gold" : "border-border hover:border-gold/50"}`}>
                     Parent / Guardian
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole("coach")}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      role === "coach"
-                        ? "border-gold bg-gold/10 text-gold"
-                        : "border-border hover:border-gold/50"
-                    }`}
-                  >
+                  <button type="button" onClick={() => setRole("coach")} className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${role === "coach" ? "border-gold bg-gold/10 text-gold" : "border-border hover:border-gold/50"}`}>
                     Coach / Admin
                   </button>
                 </div>
               </div>
-
               {error && (
-                <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
-                  {error}
-                </div>
+                <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">{error}</div>
               )}
-
               <Button type="submit" variant="hero" className="w-full" disabled={loading}>
-                {loading ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating account...</>
-                ) : (
-                  "Create Account"
-                )}
+                {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating account...</> : "Create Account"}
               </Button>
             </form>
-
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link to="/wrestling/login" className="text-gold hover:underline font-medium">
-                Sign in
-              </Link>
+              <Link to="/wrestling/login" className="text-gold hover:underline font-medium">Sign in</Link>
             </div>
           </CardContent>
         </Card>
