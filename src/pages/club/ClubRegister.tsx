@@ -184,6 +184,27 @@ export default function ClubRegister() {
 
       if (regError) throw regError;
 
+      // Auto-add parent to the program's private channel
+      if (parentId) {
+        const channelSlug = program.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const { data: programChannel } = await supabase
+          .from('message_channels')
+          .select('id')
+          .eq('club_id', club.id)
+          .eq('name', channelSlug)
+          .eq('is_private', true)
+          .maybeSingle();
+
+        if (programChannel) {
+          await supabase
+            .from('channel_members')
+            .upsert(
+              { channel_id: programChannel.id, profile_id: parentId },
+              { onConflict: 'channel_id,profile_id' }
+            );
+        }
+      }
+
       // Move to complete step
       setCurrentStep(5);
     } catch (err: any) {
