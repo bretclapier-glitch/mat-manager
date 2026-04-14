@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useClubData } from "@/components/layout/ClubLayout";
+import { supabase } from "@/lib/supabase";
 import { Loader2, Trophy } from "lucide-react";
 
 export default function ClubParentLogin() {
@@ -14,15 +15,25 @@ export default function ClubParentLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const club = useClubData();
-  const basePath = `/wrestling/club/${clubSlug}`;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Where to go after login — default to parent dashboard
-  const redirectTo = (location.state as any)?.redirectTo ?? `${basePath}/parent`;
+  async function getSlug(): Promise<string> {
+    // If clubSlug looks like a UUID, look up the real slug
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (clubSlug && uuidRegex.test(clubSlug)) {
+      const { data } = await supabase
+        .from('clubs')
+        .select('slug')
+        .eq('id', clubSlug)
+        .single();
+      if (data?.slug) return data.slug;
+    }
+    return clubSlug ?? '';
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +46,9 @@ export default function ClubParentLogin() {
       setError("Invalid email or password. Please try again.");
       setLoading(false);
     } else {
+      // Always redirect using the slug, not the ID
+      const slug = await getSlug();
+      const redirectTo = (location.state as any)?.redirectTo ?? `/wrestling/club/${slug}/parent`;
       navigate(redirectTo);
     }
   }
@@ -79,20 +93,17 @@ export default function ClubParentLogin() {
                   required
                 />
               </div>
-
               {error && (
                 <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
                   {error}
                 </div>
               )}
-
               <Button type="submit" variant="hero" className="w-full" disabled={loading}>
                 {loading ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Signing in...</>
                 ) : "Sign In"}
               </Button>
             </form>
-
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Don't have an account?{" "}
               <Link to="/wrestling/signup" className="text-gold hover:underline font-medium">
