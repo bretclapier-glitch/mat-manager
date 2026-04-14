@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -63,11 +63,17 @@ function gradeLabel(g: string) {
   return `${n}${suffix} Grade`;
 }
 
-const programs: Record<string, { name: string; price: number; duration: string; schedule: string; startDate: string }> = {
-  "1": { name: "Youth Wrestling", price: 150, duration: "8 weeks", schedule: "Tue/Thu 5:00-6:00 PM", startDate: "March 1, 2024" },
-  "2": { name: "Middle School", price: 200, duration: "10 weeks", schedule: "Mon/Wed/Fri 4:00-5:30 PM", startDate: "March 1, 2024" },
-  "3": { name: "High School", price: 250, duration: "12 weeks", schedule: "Mon-Fri 3:30-5:30 PM", startDate: "March 1, 2024" },
-  "4": { name: "Summer Camp", price: 300, duration: "1 week", schedule: "Mon-Fri 9:00 AM - 3:00 PM", startDate: "June 10, 2024" },
+type Program = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number | null;
+  payment_type: string;
+  season_start: string | null;
+  practice_days: string[];
+  practice_time: string | null;
+  practice_end_time: string | null;
+  club_id: string;
 };
 
 const steps = [
@@ -86,6 +92,8 @@ export default function ClubRegister() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedSlug, setSavedSlug] = useState<string | null>(null);
+  const [program, setProgram] = useState<Program | null>(null);
+  const [loadingProgram, setLoadingProgram] = useState(true);
   const [formData, setFormData] = useState({
     usaWrestlingNumber: "",
     wrestlerFirstName: "", wrestlerLastName: "", wrestlerDOB: "", wrestlerGender: "",
@@ -96,21 +104,55 @@ export default function ClubRegister() {
     medicalConditions: "", allergies: "", medications: "",
   });
 
-  const program = programs[programId || "1"];
   const basePath = `/wrestling/club/${clubSlug}`;
 
-  if (!program) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="p-6 text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Program Not Found</h2>
-            <Link to={`${basePath}/programs`}><Button>View All Programs</Button></Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  useEffect(() => {
+    if (programId) loadProgram(programId);
+  }, [programId]);
+
+  async function loadProgram(id: string) {
+    setLoadingProgram(true);
+    try {
+      // Try loading by UUID first
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(id)) {
+        const { data } = await supabase
+          .from('programs')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+        if (data) { setProgram(data as Program); setLoadingProgram(false); return; }
+      }
+
+      // Fallback: try by position/index for legacy hardcoded IDs
+      const legacyPrograms: Record<string, Partial<Program>> = {
+        "1": { name: "Youth Wrestling", price: 150 },
+        "2": { name: "Middle School", price: 200 },
+        "3": { name: "High School", price: 250 },
+        "4": { name: "Summer Camp", price: 300 },
+      };
+      if (legacyPrograms[id]) {
+        setProgram({ id, ...legacyPrograms[id], description: null, payment_type: 'one-time', season_start: null, practice_days: [], practice_time: null, practice_end_time: null, club_id: '' } as Program);
+      }
+    } catch (err) {
+      console.error('Error loading program:', err);
+    } finally {
+      setLoadingProgram(false);
+    }
+  }
+
+  function formatSchedule() {
+    if (!program) return '';
+    const days = Array.isArray(program.practice_days) ? program.practice_days.join('/') : '';
+    const time = program.practice_time ?? '';
+    const endTime = program.practice_end_time ?? '';
+    if (days && time) return `${days} ${time}${endTime ? ` - ${endTime}` : ''}`;
+    return time || 'Schedule TBD';
+  }
+
+  function formatStartDate() {
+    if (!program?.season_start) return 'TBD';
+    return new Date(program.season_start).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -126,7 +168,7 @@ export default function ClubRegister() {
       let club = null;
       const { data: clubBySlug } = await supabase
         .from('clubs')
-        .select('id')
+        .select('id, slug')
         .eq('slug', clubSlug)
         .maybeSingle();
 
@@ -135,26 +177,20 @@ export default function ClubRegister() {
       } else {
         const { data: clubById } = await supabase
           .from('clubs')
-          .select('id')
+          .select('id, slug')
           .eq('id', clubSlug)
           .maybeSingle();
         club = clubById;
       }
 
       if (!club) throw new Error('Club not found');
+      if (club.slug) setSavedSlug(club.slug);
 
-      // Save the real slug for redirect
-      const { data: clubWithSlug } = await supabase
-        .from('clubs')
-        .select('slug')
-        .eq('id', club.id)
-        .single();
-      if (clubWithSlug?.slug) setSavedSlug(clubWithSlug.slug);
-
-      // Check if parent account exists
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
+      const parentId = user?.id ?? null;
 
-      let parentId = user?.id ?? null;
+      const programName = program?.name ?? 'Unknown Program';
 
       // Create wrestler record
       const { data: wrestler, error: wrestlerError } = await supabase
@@ -162,7 +198,7 @@ export default function ClubRegister() {
         .insert({
           full_name: `${formData.wrestlerFirstName} ${formData.wrestlerLastName}`.trim(),
           date_of_birth: formData.wrestlerDOB || null,
-          program: program.name,
+          program: programName,
           status: 'active',
           club_id: club.id,
           parent_id: parentId,
@@ -177,7 +213,7 @@ export default function ClubRegister() {
         .from('registrations')
         .insert({
           wrestler_id: wrestler.id,
-          program: program.name,
+          program: programName,
           status: 'pending',
           club_id: club.id,
         });
@@ -186,7 +222,7 @@ export default function ClubRegister() {
 
       // Auto-add parent to the program's private channel
       if (parentId) {
-        const channelSlug = program.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const channelSlug = programName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         const { data: programChannel } = await supabase
           .from('message_channels')
           .select('id')
@@ -205,7 +241,6 @@ export default function ClubRegister() {
         }
       }
 
-      // Move to complete step
       setCurrentStep(5);
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -226,6 +261,28 @@ export default function ClubRegister() {
   const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
   const progressPercent = ((currentStep - 1) / (steps.length - 1)) * 100;
 
+  if (loadingProgram) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
+  }
+
+  if (!program) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">Program Not Found</h2>
+            <Link to={`${basePath}/programs`}><Button>View All Programs</Button></Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Program Summary */}
@@ -237,12 +294,14 @@ export default function ClubRegister() {
                 <ArrowLeft className="h-3 w-3" /> Back to programs
               </Link>
               <h1 className="text-2xl font-display">{program.name.toUpperCase()}</h1>
-              <p className="text-white/70">{program.schedule} • Starts {program.startDate}</p>
+              <p className="text-white/70">{formatSchedule()} • Starts {formatStartDate()}</p>
             </div>
-            <div className="text-right">
-              <p className="text-3xl font-bold text-gold">${program.price}</p>
-              <p className="text-white/70">{program.duration}</p>
-            </div>
+            {program.price && (
+              <div className="text-right">
+                <p className="text-3xl font-bold text-gold">${program.price}</p>
+                <p className="text-white/70">{program.payment_type === 'monthly' ? 'per month' : 'one-time'}</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -447,7 +506,7 @@ export default function ClubRegister() {
                 <CardContent className="p-4">
                   <div className="flex justify-between items-center mb-2">
                     <span>{program.name} Registration</span>
-                    <span className="font-bold">${program.price}.00</span>
+                    <span className="font-bold">${program.price ?? 0}.00</span>
                   </div>
                   <div className="flex justify-between items-center text-sm text-muted-foreground">
                     <span>Processing fee</span>
@@ -455,7 +514,7 @@ export default function ClubRegister() {
                   </div>
                   <div className="border-t mt-3 pt-3 flex justify-between items-center font-bold text-lg">
                     <span>Total</span>
-                    <span className="text-gold">${(program.price + 3.5).toFixed(2)}</span>
+                    <span className="text-gold">${((program.price ?? 0) + 3.5).toFixed(2)}</span>
                   </div>
                 </CardContent>
               </Card>
