@@ -5,43 +5,83 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  MessageSquare,
-  Search,
-  Loader2,
-  Megaphone,
-  Bell,
+  MessageSquare, Search, Loader2, Hash, Lock, Send,
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-type Message = {
+type Channel = {
   id: string;
-  subject: string;
-  body: string;
+  name: string;
+  description: string | null;
+  is_private: boolean;
+  club_id: string;
+};
+
+type ChannelMessage = {
+  id: string;
+  channel_id: string;
   sender_id: string;
-  recipient_type: string;
+  body: string;
   created_at: string;
   profiles?: { full_name: string } | null;
 };
 
 export default function ClubParentMessages() {
   const { clubSlug } = useParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [clubId, setClubId] = useState<string | null>(null);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
+  const [messages, setMessages] = useState<ChannelMessage[]>([]);
+  const [loadingChannels, setLoadingChannels] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (clubSlug) loadMessages(clubSlug);
+    if (clubSlug) loadClubAndChannels(clubSlug);
   }, [clubSlug, user]);
 
-  async function loadMessages(slug: string) {
-    setLoading(true);
+  useEffect(() => {
+    if (selectedChannel) loadMessages(selectedChannel.id);
+  }, [selectedChannel]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Real-time subscription
+  useEffect(() => {
+    if (!selectedChannel) return;
+    const subscription = supabase
+      .channel(`parent-channel-${selectedChannel.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'channel_messages',
+        filter: `channel_id=eq.${selectedChannel.id}`,
+      }, async (payload) => {
+        const { data } = await supabase
+          .from('channel_messages')
+          .select('*, profiles(full_name)')
+          .eq('id', payload.new.id)
+          .single();
+        if (data) setMessages(prev => [...prev, data as ChannelMessage]);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(subscription); };
+  }, [selectedChannel]);
+
+  async function loadClubAndChannels(slug: string) {
+    setLoadingChannels(true);
     try {
-      // Find club by slug or id
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       let club = null;
       if (uuidRegex.test(slug)) {
@@ -51,48 +91,74 @@ export default function ClubParentMessages() {
         const { data } = await supabase.from('clubs').select('id').eq('slug', slug).maybeSingle();
         club = data;
       }
-      if (!club) { setLoading(false); return; }
+      if (!club) { setLoadingChannels(false); return; }
+      setClubId(club.id);
 
+      // Parents only see public channels
       const { data } = await supabase
-        .from('messages')
-        .select('*, profiles(full_name)')
+        .from('message_channels')
+        .select('*')
         .eq('club_id', club.id)
-        .order('created_at', { ascending: false });
+        .eq('is_private', false)
+        .order('name');
 
-      const msgs = (data ?? []) as Message[];
-      setMessages(msgs);
-      if (msgs.length > 0) setSelectedMessage(msgs[0]);
+      const chs = (data ?? []) as Channel[];
+      setChannels(chs);
+      if (chs.length > 0) setSelectedChannel(chs[0]);
     } catch (err) {
-      console.error('Messages load error:', err);
+      console.error('Channels load error:', err);
     } finally {
-      setLoading(false);
+      setLoadingChannels(false);
+    }
+  }
+
+  async function loadMessages(channelId: string) {
+    setLoadingMessages(true);
+    const { data } = await supabase
+      .from('channel_messages')
+      .select('*, profiles(full_name)')
+      .eq('channel_id', channelId)
+      .order('created_at')
+      .limit(50);
+    setMessages((data ?? []) as ChannelMessage[]);
+    setLoadingMessages(false);
+  }
+
+  async function sendMessage() {
+    if (!newMessage.trim() || !selectedChannel || !profile) return;
+    setSending(true);
+    const { error } = await supabase.from('channel_messages').insert({
+      channel_id: selectedChannel.id,
+      sender_id: profile.id,
+      body: newMessage.trim(),
+    });
+    if (!error) setNewMessage("");
+    setSending(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
   }
 
   function formatTime(iso: string) {
     const date = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return 'Yesterday';
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const today = new Date();
+    if (date.toDateString() === today.toDateString()) {
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+      date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
-  function recipientLabel(type: string) {
-    if (type === 'all') return 'All Members';
-    if (type === 'parents') return 'Parents';
-    if (type === 'coaches') return 'Coaches';
-    return type;
+  function isOwnMessage(msg: ChannelMessage) {
+    return msg.sender_id === profile?.id;
   }
 
-  const filtered = messages.filter(m =>
-    m.subject.toLowerCase().includes(search.toLowerCase()) ||
-    m.body.toLowerCase().includes(search.toLowerCase())
+  const filteredChannels = channels.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -100,55 +166,48 @@ export default function ClubParentMessages() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-display">MESSAGES</h1>
-          <p className="text-muted-foreground">Club announcements and communications from your coaching staff.</p>
+          <p className="text-muted-foreground">Chat with coaches and other club members.</p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6" style={{ minHeight: '500px' }}>
-          {/* Message list */}
-          <Card className="shadow-card">
+        <div className="grid lg:grid-cols-4 gap-6" style={{ height: 'calc(100vh - 240px)', minHeight: '500px' }}>
+          {/* Channels sidebar */}
+          <Card className="shadow-card flex flex-col">
             <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-display text-muted-foreground">CHANNELS</CardTitle>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search messages..."
-                  className="pl-10"
+                  placeholder="Search..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-8 text-sm"
                 />
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-gold" />
+            <CardContent className="p-0 flex-1 overflow-y-auto">
+              {loadingChannels ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-gold" />
                 </div>
-              ) : filtered.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground px-4">
-                  <Megaphone className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">No messages yet</p>
-                  <p className="text-xs mt-1">Messages from your coaching staff will appear here</p>
+              ) : filteredChannels.length === 0 ? (
+                <div className="text-center py-8 px-4 text-muted-foreground">
+                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-xs">No channels available</p>
                 </div>
               ) : (
-                <div className="divide-y">
-                  {filtered.map((msg) => (
+                <div className="space-y-0.5 p-2">
+                  {filteredChannels.map((channel) => (
                     <button
-                      key={msg.id}
-                      onClick={() => setSelectedMessage(msg)}
-                      className={`w-full text-left p-4 transition-colors ${
-                        selectedMessage?.id === msg.id
-                          ? "bg-gold/10 border-l-2 border-gold"
-                          : "hover:bg-secondary/50"
+                      key={channel.id}
+                      onClick={() => setSelectedChannel(channel)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                        selectedChannel?.id === channel.id
+                          ? "bg-gold/10 text-gold font-medium"
+                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-semibold text-sm truncate">{msg.subject}</p>
-                        <span className="text-xs text-muted-foreground flex-shrink-0">{formatTime(msg.created_at)}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{msg.body}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Bell className="h-3 w-3 text-gold" />
-                        <span className="text-xs text-gold">{recipientLabel(msg.recipient_type)}</span>
-                      </div>
+                      <Hash className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{channel.name}</span>
                     </button>
                   ))}
                 </div>
@@ -156,36 +215,95 @@ export default function ClubParentMessages() {
             </CardContent>
           </Card>
 
-          {/* Message detail */}
-          <Card className="lg:col-span-2 shadow-card flex flex-col">
-            {selectedMessage ? (
+          {/* Chat area */}
+          <Card className="lg:col-span-3 shadow-card flex flex-col">
+            {selectedChannel ? (
               <>
-                <CardHeader className="border-b">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center flex-shrink-0">
-                      <MessageSquare className="h-5 w-5 text-gold" />
-                    </div>
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{selectedMessage.subject}</CardTitle>
-                      <div className="flex flex-wrap gap-3 mt-1 text-sm text-muted-foreground">
-                        <span>From: {selectedMessage.profiles?.full_name ?? 'Coach'}</span>
-                        <span>To: {recipientLabel(selectedMessage.recipient_type)}</span>
-                        <span>{new Date(selectedMessage.created_at).toLocaleDateString([], {
-                          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-                        })}</span>
-                      </div>
-                    </div>
+                <CardHeader className="border-b py-3">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-lg font-display">{selectedChannel.name.toUpperCase()}</CardTitle>
+                    {selectedChannel.description && (
+                      <p className="text-sm text-muted-foreground hidden md:block">— {selectedChannel.description}</p>
+                    )}
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 p-6">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{selectedMessage.body}</p>
-                </CardContent>
+
+                {/* Messages */}
+                <ScrollArea className="flex-1 p-4">
+                  {loadingMessages ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-gold" />
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      <div className="text-center">
+                        <Hash className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p>No messages yet in #{selectedChannel.name}</p>
+                        <p className="text-sm mt-1">Be the first to say something!</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {messages.map((msg) => {
+                        const own = isOwnMessage(msg);
+                        return (
+                          <div key={msg.id} className={`flex gap-3 ${own ? 'flex-row-reverse' : ''}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${own ? 'bg-gold text-navy' : 'bg-navy text-white'}`}>
+                              {(msg.profiles?.full_name ?? 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </div>
+                            <div className={`max-w-[70%] ${own ? 'items-end' : 'items-start'} flex flex-col`}>
+                              <div className={`flex items-center gap-2 mb-1 ${own ? 'flex-row-reverse' : ''}`}>
+                                <span className="text-xs font-semibold">
+                                  {own ? 'You' : (msg.profiles?.full_name ?? 'Unknown')}
+                                </span>
+                                <span className="text-xs text-muted-foreground">{formatTime(msg.created_at)}</span>
+                              </div>
+                              <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                                own
+                                  ? 'bg-gold text-navy rounded-tr-sm'
+                                  : 'bg-secondary rounded-tl-sm'
+                              }`}>
+                                {msg.body}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  )}
+                </ScrollArea>
+
+                {/* Input */}
+                <div className="p-4 border-t">
+                  <div className="flex items-end gap-2">
+                    <Textarea
+                      placeholder={`Message #${selectedChannel.name}...`}
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="min-h-[44px] max-h-32 resize-none flex-1"
+                      rows={1}
+                    />
+                    <Button
+                      variant="hero"
+                      size="icon"
+                      onClick={sendMessage}
+                      disabled={sending || !newMessage.trim()}
+                      className="flex-shrink-0"
+                    >
+                      {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Press Enter to send, Shift+Enter for new line</p>
+                </div>
               </>
             ) : (
               <CardContent className="flex-1 flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
                   <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p>Select a message to read it</p>
+                  <p>Select a channel to start chatting</p>
                 </div>
               </CardContent>
             )}
