@@ -121,11 +121,11 @@ export default function ClubRegister() {
     setError(null);
 
     try {
-      // Find club by slug
+      // Find club by slug or id (handles both URL formats)
       const { data: club } = await supabase
         .from('clubs')
         .select('id')
-        .eq('slug', clubSlug)
+        .or(`slug.eq.${clubSlug},id.eq.${clubSlug}`)
         .single();
 
       if (!club) throw new Error('Club not found');
