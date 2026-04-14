@@ -85,6 +85,7 @@ export default function ClubRegister() {
   const [waiverSigned, setWaiverSigned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedSlug, setSavedSlug] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     usaWrestlingNumber: "",
     wrestlerFirstName: "", wrestlerLastName: "", wrestlerDOB: "", wrestlerGender: "",
@@ -141,6 +142,14 @@ export default function ClubRegister() {
       }
 
       if (!club) throw new Error('Club not found');
+
+      // Save the real slug for redirect
+      const { data: clubWithSlug } = await supabase
+        .from('clubs')
+        .select('slug')
+        .eq('id', club.id)
+        .single();
+      if (clubWithSlug?.slug) setSavedSlug(clubWithSlug.slug);
 
       // Check if parent account exists
       const { data: { user } } = await supabase.auth.getUser();
@@ -453,10 +462,10 @@ export default function ClubRegister() {
               {formData.wrestlerFirstName || "Your wrestler"} has been registered for {program.name}. Check your email for confirmation details.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link to={`${basePath}/parent`}>
+              <Link to={`/wrestling/club/${savedSlug || clubSlug}/parent`}>
                 <Button variant="hero">Go to Parent Dashboard</Button>
               </Link>
-              <Link to={`${basePath}/programs`}>
+              <Link to={`/wrestling/club/${savedSlug || clubSlug}/programs`}>
                 <Button variant="outline">Register Another Wrestler</Button>
               </Link>
             </div>
