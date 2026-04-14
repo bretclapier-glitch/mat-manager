@@ -94,26 +94,25 @@ export default function ClubParentMessages() {
       if (!club) { setLoadingChannels(false); return; }
       setClubId(club.id);
 
-      // Get public channels + private channels parent is a member of
-      const [{ data: publicChannels }, { data: privateChannels }] = await Promise.all([
-        supabase
-          .from('message_channels')
-          .select('*')
-          .eq('club_id', club.id)
-          .eq('is_private', false)
-          .order('name'),
-        supabase
-          .from('message_channels')
-          .select('*, channel_members!inner(profile_id)')
-          .eq('club_id', club.id)
-          .eq('is_private', true)
-          .eq('channel_members.profile_id', user?.id ?? ''),
-      ]);
+      // Get all channels for the club
+      const { data: allChannelData } = await supabase
+        .from('message_channels')
+        .select('*')
+        .eq('club_id', club.id)
+        .order('name');
 
-      const allChannels = [
-        ...(publicChannels ?? []),
-        ...(privateChannels ?? []),
-      ].sort((a, b) => a.name.localeCompare(b.name)) as Channel[];
+      // Get private channel IDs this parent is a member of
+      const { data: membershipData } = await supabase
+        .from('channel_members')
+        .select('channel_id')
+        .eq('profile_id', user?.id ?? '');
+
+      const memberChannelIds = new Set((membershipData ?? []).map(m => m.channel_id));
+
+      // Filter: public channels + private channels they're a member of
+      const allChannels = (allChannelData ?? []).filter(ch =>
+        !ch.is_private || memberChannelIds.has(ch.id)
+      ) as Channel[];
 
       setChannels(allChannels);
       if (allChannels.length > 0) setSelectedChannel(allChannels[0]);
