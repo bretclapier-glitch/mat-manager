@@ -110,11 +110,17 @@ export default function ClubParentMessages() {
       const memberChannelIds = new Set((membershipData ?? []).map(m => m.channel_id));
 
       // Filter: public channels + private channels they're a member of
-      const allChannels = (allChannelData ?? []).filter(ch =>
-        !ch.is_private || memberChannelIds.has(ch.id)
-      ) as Channel[];
+      console.log('All channels:', allChannelData);
+console.log('Memberships:', membershipData);
+console.log('Member IDs:', Array.from(memberChannelIds));
+console.log('User ID:', user?.id);
 
-      setChannels(allChannels);
+const allChannels = (allChannelData ?? []).filter(ch =>
+  !ch.is_private || memberChannelIds.has(ch.id)
+) as Channel[];
+
+console.log('Filtered channels:', allChannels);
+setChannels(allChannels);
       if (allChannels.length > 0) setSelectedChannel(allChannels[0]);
     } catch (err) {
       console.error('Channels load error:', err);
