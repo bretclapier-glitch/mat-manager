@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useClubData } from "@/components/layout/ClubLayout";
 import ParentDashboardLayout from "@/components/layout/ParentDashboardLayout";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,35 +60,62 @@ type Announcement = {
 
 export default function ClubParentDashboard() {
   const { clubSlug } = useParams();
-  const club = useClubData();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const basePath = `/wrestling/club/${clubSlug}`;
 
+  const [clubId, setClubId] = useState<string | null>(null);
   const [wrestlers, setWrestlers] = useState<Wrestler[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Load club by slug first, then load all data
   useEffect(() => {
-    if (profile?.id && club?.id) {
-      loadParentData(profile.id, club.id);
-    }
-  }, [profile, club]);
+    if (clubSlug) loadClubAndData(clubSlug);
+  }, [clubSlug, user]);
 
-  async function loadParentData(parentId: string, clubId: string) {
+  async function loadClubAndData(slug: string) {
     setLoading(true);
     try {
+      // Get club by slug
+      const { data: club } = await supabase
+        .from('clubs')
+        .select('id')
+        .eq('slug', slug)
+        .single();
+
+      if (!club) {
+        setLoading(false);
+        return;
+      }
+
+      setClubId(club.id);
+
+      // Update profile club_id if not set
+      if (user && profile && !profile.club_id) {
+        await supabase
+          .from('profiles')
+          .update({ club_id: club.id })
+          .eq('id', user.id);
+      }
+
+      // Load all data in parallel
       const [
         { data: wrestlerData },
         { data: eventData },
         { data: paymentData },
         { data: announcementData },
       ] = await Promise.all([
-        supabase.from('wrestlers').select('*').eq('parent_id', parentId).eq('club_id', clubId).eq('status', 'active'),
-        supabase.from('events').select('*').eq('club_id', clubId).gte('start_time', new Date().toISOString()).order('start_time').limit(5),
-        supabase.from('payments').select('*').eq('parent_id', parentId).eq('club_id', clubId).order('created_at', { ascending: false }).limit(5),
-        supabase.from('announcements').select('*').eq('club_id', clubId).order('created_at', { ascending: false }).limit(5),
+        // Load wrestlers for this parent at this club
+        user
+          ? supabase.from('wrestlers').select('*').eq('parent_id', user.id).eq('club_id', club.id)
+          : { data: [] },
+        supabase.from('events').select('*').eq('club_id', club.id).gte('start_time', new Date().toISOString()).order('start_time').limit(5),
+        user
+          ? supabase.from('payments').select('*').eq('parent_id', user.id).eq('club_id', club.id).order('created_at', { ascending: false }).limit(5)
+          : { data: [] },
+        supabase.from('announcements').select('*').eq('club_id', club.id).order('created_at', { ascending: false }).limit(5),
       ]);
 
       setWrestlers((wrestlerData ?? []) as Wrestler[]);
@@ -105,29 +131,32 @@ export default function ClubParentDashboard() {
 
   function getAge(dob: string | null) {
     if (!dob) return null;
-    const diff = Date.now() - new Date(dob).getTime();
-    return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+    return Math.floor((Date.now() - new Date(dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
   }
 
-  function formatEventDate(isoString: string) {
-    const date = new Date(isoString);
+  function formatEventDate(iso: string) {
+    const date = new Date(iso);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
     return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  function formatEventTime(isoString: string) {
-    return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  function formatEventTime(iso: string) {
+    return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
   const highPriorityAlert = announcements.find(a => a.priority === 'high');
   const hasPendingPayment = payments.some(p => p.status === 'pending');
+  const firstName = profile?.full_name?.split(" ")[0]?.toUpperCase() ?? "PARENT";
 
   return (
     <ParentDashboardLayout>
       <div>
         <div className="mb-8">
-          <h1 className="text-3xl font-display mb-2">
-            WELCOME BACK, {profile?.full_name?.split(" ")[0]?.toUpperCase() ?? "PARENT"}
-          </h1>
+          <h1 className="text-3xl font-display mb-2">WELCOME BACK, {firstName}</h1>
           <p className="text-muted-foreground">Manage your wrestlers, view schedules, and stay up to date.</p>
         </div>
 
