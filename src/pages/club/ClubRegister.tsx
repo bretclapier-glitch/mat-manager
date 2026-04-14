@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,44 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+
+const US_STATES = [
+  { value: "AL", label: "Alabama" }, { value: "AK", label: "Alaska" },
+  { value: "AZ", label: "Arizona" }, { value: "AR", label: "Arkansas" },
+  { value: "CA", label: "California" }, { value: "CO", label: "Colorado" },
+  { value: "CT", label: "Connecticut" }, { value: "DE", label: "Delaware" },
+  { value: "FL", label: "Florida" }, { value: "GA", label: "Georgia" },
+  { value: "HI", label: "Hawaii" }, { value: "ID", label: "Idaho" },
+  { value: "IL", label: "Illinois" }, { value: "IN", label: "Indiana" },
+  { value: "IA", label: "Iowa" }, { value: "KS", label: "Kansas" },
+  { value: "KY", label: "Kentucky" }, { value: "LA", label: "Louisiana" },
+  { value: "ME", label: "Maine" }, { value: "MD", label: "Maryland" },
+  { value: "MA", label: "Massachusetts" }, { value: "MI", label: "Michigan" },
+  { value: "MN", label: "Minnesota" }, { value: "MS", label: "Mississippi" },
+  { value: "MO", label: "Missouri" }, { value: "MT", label: "Montana" },
+  { value: "NE", label: "Nebraska" }, { value: "NV", label: "Nevada" },
+  { value: "NH", label: "New Hampshire" }, { value: "NJ", label: "New Jersey" },
+  { value: "NM", label: "New Mexico" }, { value: "NY", label: "New York" },
+  { value: "NC", label: "North Carolina" }, { value: "ND", label: "North Dakota" },
+  { value: "OH", label: "Ohio" }, { value: "OK", label: "Oklahoma" },
+  { value: "OR", label: "Oregon" }, { value: "PA", label: "Pennsylvania" },
+  { value: "RI", label: "Rhode Island" }, { value: "SC", label: "South Carolina" },
+  { value: "SD", label: "South Dakota" }, { value: "TN", label: "Tennessee" },
+  { value: "TX", label: "Texas" }, { value: "UT", label: "Utah" },
+  { value: "VT", label: "Vermont" }, { value: "VA", label: "Virginia" },
+  { value: "WA", label: "Washington" }, { value: "WV", label: "West Virginia" },
+  { value: "WI", label: "Wisconsin" }, { value: "WY", label: "Wyoming" },
+];
+
+function gradeLabel(g: string) {
+  if (g === "K") return "Kindergarten";
+  const n = parseInt(g);
+  const suffix = n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+  return `${n}${suffix} Grade`;
+}
 
 const programs: Record<string, { name: string; price: number; duration: string; schedule: string; startDate: string }> = {
   "1": { name: "Youth Wrestling", price: 150, duration: "8 weeks", schedule: "Tue/Thu 5:00-6:00 PM", startDate: "March 1, 2024" },
@@ -36,19 +73,22 @@ const programs: Record<string, { name: string; price: number; duration: string; 
 const steps = [
   { id: 1, name: "Wrestler Info", icon: User },
   { id: 2, name: "Parent Info", icon: Users },
-  { id: 3, name: "Waivers & Policies", icon: FileText },
+  { id: 3, name: "Waivers", icon: FileText },
   { id: 4, name: "Payment", icon: CreditCard },
   { id: 5, name: "Complete", icon: CheckCircle },
 ];
 
 export default function ClubRegister() {
   const { clubSlug, programId } = useParams();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [waiverSigned, setWaiverSigned] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     usaWrestlingNumber: "",
     wrestlerFirstName: "", wrestlerLastName: "", wrestlerDOB: "", wrestlerGender: "",
-    wrestlerGrade: "", experience: "", shirtSize: "",
+    wrestlerGrade: "", experience: "",
     parentFirstName: "", parentLastName: "", email: "", phone: "",
     address: "", city: "", state: "", zip: "",
     emergencyContact: "", emergencyPhone: "",
@@ -65,9 +105,7 @@ export default function ClubRegister() {
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Program Not Found</h2>
-            <Link to={`${basePath}/programs`}>
-              <Button>View All Programs</Button>
-            </Link>
+            <Link to={`${basePath}/programs`}><Button>View All Programs</Button></Link>
           </CardContent>
         </Card>
       </div>
@@ -78,7 +116,71 @@ export default function ClubRegister() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const nextStep = () => { if (currentStep < 5) setCurrentStep(currentStep + 1); };
+  async function handleComplete() {
+    setSaving(true);
+    setError(null);
+
+    try {
+      // Find club by slug
+      const { data: club } = await supabase
+        .from('clubs')
+        .select('id')
+        .eq('slug', clubSlug)
+        .single();
+
+      if (!club) throw new Error('Club not found');
+
+      // Check if parent account exists
+      const { data: { user } } = await supabase.auth.getUser();
+
+      let parentId = user?.id ?? null;
+
+      // Create wrestler record
+      const { data: wrestler, error: wrestlerError } = await supabase
+        .from('wrestlers')
+        .insert({
+          full_name: `${formData.wrestlerFirstName} ${formData.wrestlerLastName}`.trim(),
+          date_of_birth: formData.wrestlerDOB || null,
+          program: program.name,
+          status: 'active',
+          club_id: club.id,
+          parent_id: parentId,
+        })
+        .select()
+        .single();
+
+      if (wrestlerError) throw wrestlerError;
+
+      // Create registration record
+      const { error: regError } = await supabase
+        .from('registrations')
+        .insert({
+          wrestler_id: wrestler.id,
+          program: program.name,
+          status: 'pending',
+          club_id: club.id,
+        });
+
+      if (regError) throw regError;
+
+      // Move to complete step
+      setCurrentStep(5);
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const nextStep = () => {
+    if (currentStep === 4) {
+      handleComplete();
+    } else if (currentStep < 5) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
   const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
   const progressPercent = ((currentStep - 1) / (steps.length - 1)) * 100;
 
@@ -139,17 +241,12 @@ export default function ClubRegister() {
               <Alert className="border-gold bg-gold/10">
                 <AlertCircle className="h-4 w-4 text-gold" />
                 <AlertDescription className="text-sm">
-                  <strong>USA Wrestling membership is required.</strong> All wrestlers must have an active USA Wrestling card to participate. This ensures proper insurance coverage for your athlete.
+                  <strong>USA Wrestling membership is required.</strong> All wrestlers must have an active USA Wrestling card to participate.
                   <br />
                   <span className="text-muted-foreground mt-1 block">
-                    Don't have a USA Wrestling card?{" "}
-                    <a
-                      href="https://www.usawmembership.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gold underline hover:text-gold-light font-medium"
-                    >
-                      Follow these instructions to get one →
+                    Don't have one?{" "}
+                    <a href="https://www.usawmembership.com/" target="_blank" rel="noopener noreferrer" className="text-gold underline font-medium">
+                      Get one here →
                     </a>
                   </span>
                 </AlertDescription>
@@ -157,23 +254,20 @@ export default function ClubRegister() {
 
               <div className="space-y-2">
                 <Label>USA Wrestling ID *</Label>
-                <Input
-                  value={formData.usaWrestlingNumber}
-                  onChange={(e) => handleInputChange("usaWrestlingNumber", e.target.value)}
-                  placeholder="Enter USA Wrestling membership number"
-                />
+                <Input value={formData.usaWrestlingNumber} onChange={(e) => handleInputChange("usaWrestlingNumber", e.target.value)} placeholder="Enter USA Wrestling membership number" />
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>First Name *</Label>
-                  <Input value={formData.wrestlerFirstName} onChange={(e) => handleInputChange("wrestlerFirstName", e.target.value)} placeholder="Enter first name" />
+                  <Input value={formData.wrestlerFirstName} onChange={(e) => handleInputChange("wrestlerFirstName", e.target.value)} placeholder="First name" />
                 </div>
                 <div className="space-y-2">
                   <Label>Last Name *</Label>
-                  <Input value={formData.wrestlerLastName} onChange={(e) => handleInputChange("wrestlerLastName", e.target.value)} placeholder="Enter last name" />
+                  <Input value={formData.wrestlerLastName} onChange={(e) => handleInputChange("wrestlerLastName", e.target.value)} placeholder="Last name" />
                 </div>
               </div>
+
               <div className="grid sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Date of Birth *</Label>
@@ -195,15 +289,16 @@ export default function ClubRegister() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       {["K","1","2","3","4","5","6","7","8","9","10","11","12"].map((g) => (
-                        <SelectItem key={g} value={g}>{g === "K" ? "Kindergarten" : `${g}th Grade`}</SelectItem>
+                        <SelectItem key={g} value={g}>{gradeLabel(g)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
               <div className="space-y-2">
-                <Label>Medical Conditions</Label>
-                <Textarea value={formData.medicalConditions} onChange={(e) => handleInputChange("medicalConditions", e.target.value)} placeholder="List any medical conditions..." rows={3} />
+                <Label>Medical Conditions / Allergies</Label>
+                <Textarea value={formData.medicalConditions} onChange={(e) => handleInputChange("medicalConditions", e.target.value)} placeholder="List any medical conditions, allergies, or medications..." rows={3} />
               </div>
             </CardContent>
           </>
@@ -248,12 +343,11 @@ export default function ClubRegister() {
                 <div className="space-y-2">
                   <Label>State *</Label>
                   <Select value={formData.state} onValueChange={(v) => handleInputChange("state", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="TX">Texas</SelectItem>
-                      <SelectItem value="CA">California</SelectItem>
-                      <SelectItem value="FL">Florida</SelectItem>
-                      <SelectItem value="NY">New York</SelectItem>
+                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {US_STATES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -328,45 +422,50 @@ export default function ClubRegister() {
                 <p className="font-medium">Payment integration coming soon</p>
                 <p className="text-sm">Stripe checkout will be integrated here</p>
               </div>
+              {error && (
+                <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
+                  {error}
+                </div>
+              )}
             </CardContent>
           </>
         )}
 
         {currentStep === 5 && (
-          <>
-            <CardContent className="py-16 text-center">
-              <div className="w-20 h-20 bg-wrestling-green/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="h-10 w-10 text-wrestling-green" />
-              </div>
-              <h2 className="text-3xl font-display mb-4">REGISTRATION COMPLETE!</h2>
-              <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                {formData.wrestlerFirstName || "Your wrestler"} has been registered for {program.name}. Check your email for confirmation details.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to={`${basePath}/parent`}>
-                  <Button variant="hero">Go to Parent Dashboard</Button>
-                </Link>
-                <Link to={`${basePath}/programs`}>
-                  <Button variant="outline">Register Another Wrestler</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </>
+          <CardContent className="py-16 text-center">
+            <div className="w-20 h-20 bg-wrestling-green/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="h-10 w-10 text-wrestling-green" />
+            </div>
+            <h2 className="text-3xl font-display mb-4">REGISTRATION COMPLETE!</h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+              {formData.wrestlerFirstName || "Your wrestler"} has been registered for {program.name}. Check your email for confirmation details.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link to={`${basePath}/parent`}>
+                <Button variant="hero">Go to Parent Dashboard</Button>
+              </Link>
+              <Link to={`${basePath}/programs`}>
+                <Button variant="outline">Register Another Wrestler</Button>
+              </Link>
+            </div>
+          </CardContent>
         )}
 
         {/* Navigation */}
         {currentStep < 5 && (
           <div className="px-6 pb-6 flex justify-between">
-            <Button variant="outline" onClick={prevStep} disabled={currentStep === 1}>
+            <Button variant="outline" onClick={prevStep} disabled={currentStep === 1 || saving}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Back
             </Button>
             <Button
               variant="hero"
               onClick={nextStep}
-              disabled={currentStep === 3 && !waiverSigned}
+              disabled={(currentStep === 3 && !waiverSigned) || saving}
             >
-              {currentStep === 4 ? "Complete Registration" : "Continue"}
-              <ArrowRight className="h-4 w-4 ml-2" />
+              {saving ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+              ) : currentStep === 4 ? "Complete Registration" : "Continue"}
+              {!saving && <ArrowRight className="h-4 w-4 ml-2" />}
             </Button>
           </div>
         )}
