@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -11,107 +12,198 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { 
-  Search, 
-  Plus, 
+import { Switch } from "@/components/ui/switch";
+import {
+  Search,
+  Plus,
   Send,
-  Users,
-  User,
-  Clock,
+  Hash,
+  Lock,
   Loader2,
-  Megaphone,
+  MessageSquare,
+  Trash2,
+  Settings,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 
-type Message = {
+type Channel = {
   id: string;
-  subject: string;
-  body: string;
-  sender_id: string;
+  name: string;
+  description: string | null;
+  is_private: boolean;
   club_id: string;
-  recipient_type: string;
+};
+
+type ChannelMessage = {
+  id: string;
+  channel_id: string;
+  sender_id: string;
+  body: string;
   created_at: string;
   profiles?: { full_name: string } | null;
 };
 
 export default function Messages() {
   const { profile } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [newSubject, setNewSubject] = useState("");
-  const [newBody, setNewBody] = useState("");
-  const [recipientType, setRecipientType] = useState<"all" | "parents" | "coaches">("all");
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
+  const [messages, setMessages] = useState<ChannelMessage[]>([]);
+  const [loadingChannels, setLoadingChannels] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [search, setSearch] = useState("");
+
+  // Channel management dialog
+  const [channelDialogOpen, setChannelDialogOpen] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+  const [cName, setCName] = useState("");
+  const [cDescription, setCDescription] = useState("");
+  const [cIsPrivate, setCIsPrivate] = useState(false);
+  const [savingChannel, setSavingChannel] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (profile?.club_id) loadMessages(profile.club_id);
+    if (profile?.club_id) loadChannels(profile.club_id);
   }, [profile]);
 
-  async function loadMessages(clubId: string) {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*, profiles(full_name)')
-      .eq('club_id', clubId)
-      .order('created_at', { ascending: false });
+  useEffect(() => {
+    if (selectedChannel) loadMessages(selectedChannel.id);
+  }, [selectedChannel]);
 
-    if (!error) setMessages((data ?? []) as Message[]);
-    setLoading(false);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Real-time subscription
+  useEffect(() => {
+    if (!selectedChannel) return;
+    const subscription = supabase
+      .channel(`channel-${selectedChannel.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'channel_messages',
+        filter: `channel_id=eq.${selectedChannel.id}`,
+      }, async (payload) => {
+        const { data } = await supabase
+          .from('channel_messages')
+          .select('*, profiles(full_name)')
+          .eq('id', payload.new.id)
+          .single();
+        if (data) setMessages(prev => [...prev, data as ChannelMessage]);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(subscription); };
+  }, [selectedChannel]);
+
+  async function loadChannels(clubId: string) {
+    setLoadingChannels(true);
+    const { data } = await supabase
+      .from('message_channels')
+      .select('*')
+      .eq('club_id', clubId)
+      .order('name');
+    const chs = (data ?? []) as Channel[];
+    setChannels(chs);
+    if (chs.length > 0) setSelectedChannel(chs[0]);
+    setLoadingChannels(false);
+  }
+
+  async function loadMessages(channelId: string) {
+    setLoadingMessages(true);
+    const { data } = await supabase
+      .from('channel_messages')
+      .select('*, profiles(full_name)')
+      .eq('channel_id', channelId)
+      .order('created_at')
+      .limit(50);
+    setMessages((data ?? []) as ChannelMessage[]);
+    setLoadingMessages(false);
   }
 
   async function sendMessage() {
-    if (!newSubject.trim() || !newBody.trim() || !profile) return;
+    if (!newMessage.trim() || !selectedChannel || !profile) return;
     setSending(true);
-
-    const { error } = await supabase.from('messages').insert({
-      subject: newSubject,
-      body: newBody,
+    const { error } = await supabase.from('channel_messages').insert({
+      channel_id: selectedChannel.id,
       sender_id: profile.id,
-      club_id: profile.club_id,
-      recipient_type: recipientType,
+      body: newMessage.trim(),
     });
-
-    if (!error) {
-      setComposeOpen(false);
-      setNewSubject("");
-      setNewBody("");
-      setRecipientType("all");
-      if (profile.club_id) loadMessages(profile.club_id);
-    }
+    if (!error) setNewMessage("");
     setSending(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function openAddChannel() {
+    setEditingChannel(null);
+    setCName(""); setCDescription(""); setCIsPrivate(false);
+    setChannelDialogOpen(true);
+  }
+
+  function openEditChannel(channel: Channel) {
+    setEditingChannel(channel);
+    setCName(channel.name);
+    setCDescription(channel.description ?? "");
+    setCIsPrivate(channel.is_private);
+    setChannelDialogOpen(true);
+  }
+
+  async function saveChannel() {
+    if (!cName.trim() || !profile?.club_id) return;
+    setSavingChannel(true);
+    try {
+      if (editingChannel) {
+        await supabase.from('message_channels').update({
+          name: cName, description: cDescription || null, is_private: cIsPrivate,
+        }).eq('id', editingChannel.id);
+      } else {
+        await supabase.from('message_channels').insert({
+          name: cName, description: cDescription || null,
+          is_private: cIsPrivate, club_id: profile.club_id,
+        });
+      }
+      setChannelDialogOpen(false);
+      loadChannels(profile.club_id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingChannel(false);
+    }
+  }
+
+  async function deleteChannel(id: string) {
+    if (!confirm("Delete this channel and all its messages?")) return;
+    await supabase.from('message_channels').delete().eq('id', id);
+    if (profile?.club_id) loadChannels(profile.club_id);
   }
 
   function formatTime(iso: string) {
     const date = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return 'Yesterday';
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const today = new Date();
+    if (date.toDateString() === today.toDateString()) {
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+      date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
-  const filteredMessages = messages.filter(m =>
-    m.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.body.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  function isOwnMessage(msg: ChannelMessage) {
+    return msg.sender_id === profile?.id;
+  }
 
-  const recipientLabel = (type: string) => {
-    if (type === 'all') return 'All Parents & Staff';
-    if (type === 'parents') return 'Parents Only';
-    if (type === 'coaches') return 'Coaches Only';
-    return type;
-  };
+  const filteredChannels = channels.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <DashboardLayout>
@@ -119,110 +211,175 @@ export default function Messages() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display">MESSAGES</h1>
-            <p className="text-muted-foreground">Communicate with parents and staff</p>
+            <p className="text-muted-foreground">Chat with parents and coaching staff</p>
           </div>
-          <Button variant="hero" onClick={() => setComposeOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Message
+          <Button variant="hero" onClick={openAddChannel}>
+            <Plus className="h-4 w-4 mr-2" />New Channel
           </Button>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-240px)]">
-          {/* Messages List */}
-          <Card className="shadow-card lg:col-span-1">
+        <div className="grid lg:grid-cols-4 gap-6" style={{ height: 'calc(100vh - 240px)', minHeight: '500px' }}>
+          {/* Channels sidebar */}
+          <Card className="shadow-card flex flex-col">
             <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-display text-muted-foreground">CHANNELS</CardTitle>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search messages..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-8 text-sm"
                 />
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[calc(100vh-380px)]">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-gold" />
-                  </div>
-                ) : filteredMessages.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground px-4">
-                    <Megaphone className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">No messages yet</p>
-                    <Button variant="outline" size="sm" className="mt-3" onClick={() => setComposeOpen(true)}>
-                      Send your first message
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-1 px-4 pb-4">
-                    {filteredMessages.map((message) => (
+            <CardContent className="p-0 flex-1 overflow-y-auto">
+              {loadingChannels ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-gold" />
+                </div>
+              ) : filteredChannels.length === 0 ? (
+                <div className="text-center py-8 px-4 text-muted-foreground">
+                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-xs">No channels yet</p>
+                </div>
+              ) : (
+                <div className="space-y-0.5 p-2">
+                  {filteredChannels.map((channel) => (
+                    <div key={channel.id} className="group flex items-center gap-1">
                       <button
-                        key={message.id}
-                        onClick={() => setSelectedMessage(message)}
-                        className={`w-full text-left p-3 rounded-lg transition-colors ${
-                          selectedMessage?.id === message.id
-                            ? "bg-gold/10 border border-gold"
-                            : "hover:bg-secondary"
+                        onClick={() => setSelectedChannel(channel)}
+                        className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                          selectedChannel?.id === channel.id
+                            ? "bg-gold/10 text-gold font-medium"
+                            : "hover:bg-secondary text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-navy text-white flex items-center justify-center flex-shrink-0">
-                            {message.recipient_type === 'all' || message.recipient_type === 'parents'
-                              ? <Users className="h-5 w-5" />
-                              : <User className="h-5 w-5" />
-                            }
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium truncate text-sm">{message.subject}</span>
-                              <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-                                {formatTime(message.created_at)}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">{message.body}</p>
-                            <p className="text-xs text-gold mt-1">{recipientLabel(message.recipient_type)}</p>
-                          </div>
-                        </div>
+                        {channel.is_private
+                          ? <Lock className="h-3.5 w-3.5 flex-shrink-0" />
+                          : <Hash className="h-3.5 w-3.5 flex-shrink-0" />}
+                        <span className="truncate">{channel.name}</span>
                       </button>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
+                      <button
+                        onClick={() => openEditChannel(channel)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-secondary rounded transition-opacity"
+                      >
+                        <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Message Detail */}
-          <Card className="shadow-card lg:col-span-2 flex flex-col">
-            {selectedMessage ? (
+          {/* Chat area */}
+          <Card className="lg:col-span-3 shadow-card flex flex-col">
+            {selectedChannel ? (
               <>
-                <CardHeader className="border-b">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-navy text-white flex items-center justify-center flex-shrink-0">
-                      <Users className="h-5 w-5" />
+                <CardHeader className="border-b py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {selectedChannel.is_private
+                        ? <Lock className="h-4 w-4 text-muted-foreground" />
+                        : <Hash className="h-4 w-4 text-muted-foreground" />}
+                      <CardTitle className="text-lg font-display">{selectedChannel.name.toUpperCase()}</CardTitle>
+                      {selectedChannel.is_private && <Badge variant="outline" className="text-xs">Private</Badge>}
                     </div>
-                    <div>
-                      <CardTitle className="text-lg">{selectedMessage.subject}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        To: {recipientLabel(selectedMessage.recipient_type)} •{" "}
-                        {new Date(selectedMessage.created_at).toLocaleDateString([], {
-                          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-                        })}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      {selectedChannel.description && (
+                        <p className="text-sm text-muted-foreground hidden md:block">{selectedChannel.description}</p>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => openEditChannel(selectedChannel)}>
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => deleteChannel(selectedChannel.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 p-6">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{selectedMessage.body}</p>
-                </CardContent>
+
+                {/* Messages */}
+                <ScrollArea className="flex-1 p-4">
+                  {loadingMessages ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-gold" />
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      <div className="text-center">
+                        <Hash className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p>No messages yet in #{selectedChannel.name}</p>
+                        <p className="text-sm mt-1">Be the first to say something!</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {messages.map((msg) => {
+                        const own = isOwnMessage(msg);
+                        return (
+                          <div key={msg.id} className={`flex gap-3 ${own ? 'flex-row-reverse' : ''}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${own ? 'bg-gold text-navy' : 'bg-navy text-white'}`}>
+                              {(msg.profiles?.full_name ?? 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </div>
+                            <div className={`max-w-[70%] ${own ? 'items-end' : 'items-start'} flex flex-col`}>
+                              <div className={`flex items-center gap-2 mb-1 ${own ? 'flex-row-reverse' : ''}`}>
+                                <span className="text-xs font-semibold">
+                                  {own ? 'You' : (msg.profiles?.full_name ?? 'Unknown')}
+                                </span>
+                                <span className="text-xs text-muted-foreground">{formatTime(msg.created_at)}</span>
+                              </div>
+                              <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                                own
+                                  ? 'bg-gold text-navy rounded-tr-sm'
+                                  : 'bg-secondary rounded-tl-sm'
+                              }`}>
+                                {msg.body}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  )}
+                </ScrollArea>
+
+                {/* Input */}
+                <div className="p-4 border-t">
+                  <div className="flex items-end gap-2">
+                    <Textarea
+                      placeholder={`Message #${selectedChannel.name}...`}
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="min-h-[44px] max-h-32 resize-none flex-1"
+                      rows={1}
+                    />
+                    <Button
+                      variant="hero"
+                      size="icon"
+                      onClick={sendMessage}
+                      disabled={sending || !newMessage.trim()}
+                      className="flex-shrink-0"
+                    >
+                      {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Press Enter to send, Shift+Enter for new line</p>
+                </div>
               </>
             ) : (
               <CardContent className="flex-1 flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
-                  <Megaphone className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p>Select a message to read it</p>
-                  <p className="text-sm mt-1">Or send a new message to your club</p>
+                  <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p>Select a channel to start chatting</p>
                 </div>
               </CardContent>
             )}
@@ -230,65 +387,52 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* Compose Dialog */}
-      <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-        <DialogContent className="max-w-lg">
+      {/* Channel dialog */}
+      <Dialog open={channelDialogOpen} onOpenChange={setChannelDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">NEW MESSAGE</DialogTitle>
+            <DialogTitle className="font-display text-xl">
+              {editingChannel ? "EDIT CHANNEL" : "NEW CHANNEL"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Send To</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['all', 'parents', 'coaches'] as const).map(type => (
-                  <button
-                    key={type}
-                    onClick={() => setRecipientType(type)}
-                    className={`p-2 rounded-lg border-2 text-sm font-medium transition-colors capitalize ${
-                      recipientType === type
-                        ? "border-gold bg-gold/10 text-gold"
-                        : "border-border hover:border-gold/50"
-                    }`}
-                  >
-                    {type === 'all' ? 'Everyone' : type}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
+              <Label>Channel Name *</Label>
               <Input
-                id="subject"
-                placeholder="e.g. Practice cancelled tomorrow"
-                value={newSubject}
-                onChange={(e) => setNewSubject(e.target.value)}
+                placeholder="e.g. announcements, youth-parents"
+                value={cName}
+                onChange={(e) => setCName(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
               />
+              <p className="text-xs text-muted-foreground">Lowercase, no spaces (use hyphens)</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="body">Message</Label>
-              <Textarea
-                id="body"
-                placeholder="Write your message here..."
-                value={newBody}
-                onChange={(e) => setNewBody(e.target.value)}
-                rows={6}
+              <Label>Description</Label>
+              <Input
+                placeholder="What is this channel for?"
+                value={cDescription}
+                onChange={(e) => setCDescription(e.target.value)}
               />
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setComposeOpen(false)}>
-                Cancel
-              </Button>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+              <div>
+                <p className="font-medium text-sm">Private Channel</p>
+                <p className="text-xs text-muted-foreground">Only coaches can see private channels</p>
+              </div>
+              <Switch checked={cIsPrivate} onCheckedChange={setCIsPrivate} />
+            </div>
+            {editingChannel && (
               <Button
-                variant="hero"
-                className="flex-1"
-                onClick={sendMessage}
-                disabled={sending || !newSubject.trim() || !newBody.trim()}
+                variant="ghost"
+                className="w-full text-destructive hover:text-destructive"
+                onClick={() => { deleteChannel(editingChannel.id); setChannelDialogOpen(false); }}
               >
-                {sending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
-                ) : (
-                  <><Send className="h-4 w-4 mr-2" />Send Message</>
-                )}
+                <Trash2 className="h-4 w-4 mr-2" />Delete Channel
+              </Button>
+            )}
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setChannelDialogOpen(false)}>Cancel</Button>
+              <Button variant="hero" className="flex-1" onClick={saveChannel} disabled={savingChannel || !cName.trim()}>
+                {savingChannel ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : editingChannel ? "Update" : "Create Channel"}
               </Button>
             </div>
           </div>
