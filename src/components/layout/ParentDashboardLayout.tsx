@@ -1,8 +1,8 @@
 import { ReactNode, useState } from "react";
-import { Link, useParams, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useClubData } from "@/components/layout/ClubLayout";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Trophy,
   LayoutDashboard,
@@ -10,15 +10,12 @@ import {
   Calendar,
   MessageSquare,
   CreditCard,
-  FileText,
   ShoppingBag,
   User,
   Menu,
-  X,
   LogOut,
   Bell,
   ChevronDown,
-  Settings,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,12 +30,12 @@ interface ParentDashboardLayoutProps {
   children: ReactNode;
 }
 
-const parentInfo = { name: "David Johnson", email: "david.johnson@email.com" };
-
 export default function ParentDashboardLayout({ children }: ParentDashboardLayoutProps) {
   const { clubSlug } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const club = useClubData();
+  const { profile, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const basePath = `/wrestling/club/${clubSlug}`;
 
@@ -51,6 +48,14 @@ export default function ParentDashboardLayout({ children }: ParentDashboardLayou
     { icon: ShoppingBag, label: "Shop", path: `${basePath}/store` },
     { icon: User, label: "Profile", path: `${basePath}/parent/profile` },
   ];
+
+  const displayName = profile?.full_name ?? "Parent";
+  const initials = displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase();
+
+  async function handleSignOut() {
+    await signOut();
+    navigate(`${basePath}/login`);
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,7 +102,7 @@ export default function ParentDashboardLayout({ children }: ParentDashboardLayou
 
           <div className="p-4 border-t border-sidebar-border">
             <div className="px-4 py-3 rounded-lg bg-sidebar-accent">
-              <p className="text-sm font-medium text-sidebar-accent-foreground">{parentInfo.name}</p>
+              <p className="text-sm font-medium text-sidebar-accent-foreground">{displayName}</p>
               <p className="text-xs text-sidebar-foreground/60">Parent Account</p>
             </div>
           </div>
@@ -118,30 +123,14 @@ export default function ParentDashboardLayout({ children }: ParentDashboardLayou
                 <PopoverTrigger asChild>
                   <button className="relative p-2 hover:bg-secondary rounded-lg">
                     <Bell className="h-5 w-5 text-muted-foreground" />
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-wrestling-red rounded-full" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-80 p-0">
                   <div className="p-4 border-b">
                     <h4 className="font-display text-sm">NOTIFICATIONS</h4>
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {[
-                      { title: "Practice Cancelled", desc: "Feb 8 practice cancelled due to maintenance", time: "3 hours ago", unread: true },
-                      { title: "Tournament Reminder", desc: "Austin Youth Tournament is in 5 days", time: "Yesterday", unread: true },
-                      { title: "Payment Due", desc: "Tournament fee of $35 is due", time: "2 days ago", unread: false },
-                    ].map((n, i) => (
-                      <div key={i} className={`p-3 border-b last:border-0 ${n.unread ? "bg-gold/5" : ""}`}>
-                        <div className="flex items-start gap-2">
-                          {n.unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-gold shrink-0" />}
-                          <div className={n.unread ? "" : "ml-4"}>
-                            <p className={`text-sm ${n.unread ? "font-semibold" : "font-medium"}`}>{n.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{n.desc}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{n.time}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    No new notifications
                   </div>
                 </PopoverContent>
               </Popover>
@@ -151,9 +140,11 @@ export default function ParentDashboardLayout({ children }: ParentDashboardLayou
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 p-2 hover:bg-secondary rounded-lg">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gold text-navy font-bold text-sm">DJ</AvatarFallback>
+                      <AvatarFallback className="bg-gold text-navy font-bold text-sm">
+                        {initials}
+                      </AvatarFallback>
                     </Avatar>
-                    <span className="hidden md:block font-medium">{parentInfo.name}</span>
+                    <span className="hidden md:block font-medium">{displayName}</span>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
@@ -162,9 +153,9 @@ export default function ParentDashboardLayout({ children }: ParentDashboardLayou
                     <DropdownMenuItem><User className="h-4 w-4 mr-2" />Profile</DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />
-                  <Link to={`${basePath}/login`}>
-                    <DropdownMenuItem className="text-destructive"><LogOut className="h-4 w-4 mr-2" />Sign out</DropdownMenuItem>
-                  </Link>
+                  <DropdownMenuItem className="text-destructive cursor-pointer" onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-2" />Sign out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
