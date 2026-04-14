@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,46 +20,142 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users, Search, Download, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Users, Search, Plus, Loader2, UserPlus } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 
-const programs = [
-  { id: "all", name: "All Programs" },
-  { id: "youth", name: "Youth Wrestling" },
-  { id: "middle", name: "Middle School" },
-  { id: "high", name: "High School" },
-  { id: "summer", name: "Summer Camp" },
-];
+type Wrestler = {
+  id: string;
+  full_name: string;
+  date_of_birth: string | null;
+  weight_class: string | null;
+  program: string;
+  status: string;
+  parent_id: string | null;
+  club_id: string;
+  created_at: string;
+  profiles?: { full_name: string; email: string } | null;
+};
 
-const members = [
-  { id: 1, name: "Marcus Johnson", program: "middle", age: 12, grade: "7th", weight: "105", parentName: "David Johnson", parentEmail: "david.johnson@email.com", parentPhone: "(512) 555-1234", usaWrestling: "TX-98765", status: "active" },
-  { id: 2, name: "Emma Johnson", program: "youth", age: 8, grade: "3rd", weight: "62", parentName: "David Johnson", parentEmail: "david.johnson@email.com", parentPhone: "(512) 555-1234", usaWrestling: "TX-98766", status: "active" },
-  { id: 3, name: "Tyler Williams", program: "middle", age: 13, grade: "8th", weight: "120", parentName: "Sarah Williams", parentEmail: "sarah.w@email.com", parentPhone: "(512) 555-2345", usaWrestling: "TX-87654", status: "active" },
-  { id: 4, name: "Sophia Martinez", program: "youth", age: 9, grade: "4th", weight: "70", parentName: "Carlos Martinez", parentEmail: "carlos.m@email.com", parentPhone: "(512) 555-3456", usaWrestling: "TX-76543", status: "active" },
-  { id: 5, name: "Liam Chen", program: "high", age: 16, grade: "11th", weight: "152", parentName: "Wei Chen", parentEmail: "wei.chen@email.com", parentPhone: "(512) 555-4567", usaWrestling: "TX-65432", status: "active" },
-  { id: 6, name: "Olivia Brown", program: "high", age: 15, grade: "10th", weight: "130", parentName: "James Brown", parentEmail: "james.b@email.com", parentPhone: "(512) 555-5678", usaWrestling: "TX-54321", status: "active" },
-  { id: 7, name: "Noah Davis", program: "youth", age: 7, grade: "2nd", weight: "55", parentName: "Amanda Davis", parentEmail: "amanda.d@email.com", parentPhone: "(512) 555-6789", usaWrestling: "TX-43210", status: "inactive" },
-  { id: 8, name: "Ethan Garcia", program: "middle", age: 14, grade: "8th", weight: "135", parentName: "Maria Garcia", parentEmail: "maria.g@email.com", parentPhone: "(512) 555-7890", usaWrestling: "TX-32109", status: "active" },
-  { id: 9, name: "Ava Wilson", program: "high", age: 17, grade: "12th", weight: "140", parentName: "Robert Wilson", parentEmail: "robert.w@email.com", parentPhone: "(512) 555-8901", usaWrestling: "TX-21098", status: "active" },
-  { id: 10, name: "Jackson Lee", program: "summer", age: 10, grade: "5th", weight: "80", parentName: "Jenny Lee", parentEmail: "jenny.l@email.com", parentPhone: "(512) 555-9012", usaWrestling: "TX-10987", status: "active" },
-];
+type Program = {
+  id: string;
+  name: string;
+};
 
 export default function Members() {
-  const [selectedProgram, setSelectedProgram] = useState("all");
+  const { profile } = useAuth();
+  const [wrestlers, setWrestlers] = useState<Wrestler[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [weights, setWeights] = useState<Record<number, string>>(
-    Object.fromEntries(members.map((m) => [m.id, m.weight]))
-  );
+  const [selectedProgram, setSelectedProgram] = useState("all");
+  const [addOpen, setAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = members.filter((m) => {
-    const matchesProgram = selectedProgram === "all" || m.program === selectedProgram;
-    const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.parentName.toLowerCase().includes(search.toLowerCase());
+  // Add member form state
+  const [newName, setNewName] = useState("");
+  const [newDob, setNewDob] = useState("");
+  const [newProgram, setNewProgram] = useState("");
+  const [newWeightClass, setNewWeightClass] = useState("");
+  const [newParentEmail, setNewParentEmail] = useState("");
+
+  useEffect(() => {
+    if (profile?.club_id) {
+      loadWrestlers(profile.club_id);
+      loadPrograms(profile.club_id);
+    }
+  }, [profile]);
+
+  async function loadWrestlers(clubId: string) {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('wrestlers')
+      .select('*, profiles(full_name, email)')
+      .eq('club_id', clubId)
+      .order('full_name');
+
+    if (!error) setWrestlers((data ?? []) as Wrestler[]);
+    setLoading(false);
+  }
+
+  async function loadPrograms(clubId: string) {
+    const { data } = await supabase
+      .from('programs')
+      .select('id, name')
+      .eq('club_id', clubId)
+      .order('name');
+    setPrograms((data ?? []) as Program[]);
+  }
+
+  async function handleAddMember() {
+    if (!newName.trim() || !profile?.club_id) return;
+    setSaving(true);
+    setError(null);
+
+    try {
+      const { error: insertError } = await supabase
+        .from('wrestlers')
+        .insert({
+          full_name: newName,
+          date_of_birth: newDob || null,
+          program: newProgram || 'General',
+          weight_class: newWeightClass || null,
+          status: 'active',
+          club_id: profile.club_id,
+        });
+
+      if (insertError) throw insertError;
+
+      setAddOpen(false);
+      resetForm();
+      loadWrestlers(profile.club_id);
+    } catch (err: any) {
+      setError('Failed to add member. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function resetForm() {
+    setNewName("");
+    setNewDob("");
+    setNewProgram("");
+    setNewWeightClass("");
+    setNewParentEmail("");
+    setError(null);
+  }
+
+  function getAge(dob: string | null) {
+    if (!dob) return null;
+    const diff = Date.now() - new Date(dob).getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+  }
+
+  const filtered = wrestlers.filter((w) => {
+    const matchesProgram = selectedProgram === "all" || w.program === selectedProgram;
+    const matchesSearch =
+      w.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      (w.profiles?.full_name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (w.profiles?.email ?? "").toLowerCase().includes(search.toLowerCase());
     return matchesProgram && matchesSearch;
   });
 
-  const programCounts = programs.map((p) => ({
-    ...p,
-    count: p.id === "all" ? members.length : members.filter((m) => m.program === p.id).length,
-  }));
+  const programOptions = [
+    { id: "all", name: "All Programs" },
+    ...programs,
+    ...Array.from(new Set(wrestlers.map(w => w.program)))
+      .filter(p => !programs.find(pr => pr.name === p))
+      .map(p => ({ id: p, name: p })),
+  ];
+
+  const uniquePrograms = Array.from(new Set(wrestlers.map(w => w.program)));
 
   return (
     <DashboardLayout>
@@ -69,27 +166,51 @@ export default function Members() {
             <p className="text-muted-foreground">View and manage your club roster.</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline"><Download className="h-4 w-4 mr-2" />Export</Button>
-            <Button variant="hero"><Plus className="h-4 w-4 mr-2" />Add Member</Button>
+            <Button variant="hero" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />Add Member
+            </Button>
           </div>
         </div>
 
         {/* Program quick stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {programCounts.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setSelectedProgram(p.id)}
-              className={`p-3 rounded-lg text-left transition-colors border ${
-                selectedProgram === p.id
-                  ? "bg-gold/10 border-gold text-foreground"
-                  : "bg-card border-border hover:bg-secondary/50"
-              }`}
-            >
-              <p className="text-2xl font-bold">{p.count}</p>
-              <p className="text-xs text-muted-foreground">{p.name}</p>
-            </button>
-          ))}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button
+            onClick={() => setSelectedProgram("all")}
+            className={`p-3 rounded-lg text-left transition-colors border ${
+              selectedProgram === "all"
+                ? "bg-gold/10 border-gold"
+                : "bg-card border-border hover:bg-secondary/50"
+            }`}
+          >
+            <p className="text-2xl font-bold">{wrestlers.length}</p>
+            <p className="text-xs text-muted-foreground">All Members</p>
+          </button>
+          <button
+            onClick={() => setSelectedProgram("active")}
+            className={`p-3 rounded-lg text-left transition-colors border ${
+              selectedProgram === "active"
+                ? "bg-gold/10 border-gold"
+                : "bg-card border-border hover:bg-secondary/50"
+            }`}
+          >
+            <p className="text-2xl font-bold">{wrestlers.filter(w => w.status === 'active').length}</p>
+            <p className="text-xs text-muted-foreground">Active</p>
+          </button>
+          <button
+            onClick={() => setSelectedProgram("inactive")}
+            className={`p-3 rounded-lg text-left transition-colors border ${
+              selectedProgram === "inactive"
+                ? "bg-gold/10 border-gold"
+                : "bg-card border-border hover:bg-secondary/50"
+            }`}
+          >
+            <p className="text-2xl font-bold">{wrestlers.filter(w => w.status === 'inactive').length}</p>
+            <p className="text-xs text-muted-foreground">Inactive</p>
+          </button>
+          <div className="p-3 rounded-lg text-left bg-card border border-border">
+            <p className="text-2xl font-bold">{uniquePrograms.length}</p>
+            <p className="text-xs text-muted-foreground">Programs</p>
+          </div>
         </div>
 
         {/* Filters */}
@@ -110,7 +231,7 @@ export default function Members() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {programs.map((p) => (
+                  {programOptions.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -128,71 +249,171 @@ export default function Members() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Wrestler</TableHead>
-                    <TableHead>Program</TableHead>
-                    <TableHead>Grade</TableHead>
-                    <TableHead>Weight (lbs)</TableHead>
-                    <TableHead>Parent Contact</TableHead>
-                    <TableHead>USA Wrestling #</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-navy flex items-center justify-center">
-                            <span className="text-xs font-bold text-white">{m.name.split(" ").map((n) => n[0]).join("")}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{m.name}</p>
-                            <p className="text-xs text-muted-foreground">Age {m.age}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {programs.find((p) => p.id === m.program)?.name || m.program}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{m.grade}</TableCell>
-                      <TableCell>
-                        <Input
-                          className="w-20 h-8 text-center"
-                          value={weights[m.id] || ""}
-                          onChange={(e) => setWeights((prev) => ({ ...prev, [m.id]: e.target.value }))}
-                          placeholder="—"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="text-sm">{m.parentName}</p>
-                          <p className="text-xs text-muted-foreground">{m.parentEmail}</p>
-                          <p className="text-xs text-muted-foreground">{m.parentPhone}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm font-mono">{m.usaWrestling}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={m.status === "active" ? "bg-wrestling-green/10 text-wrestling-green border-wrestling-green/20" : "bg-muted text-muted-foreground"}
-                        >
-                          {m.status}
-                        </Badge>
-                      </TableCell>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-gold" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <UserPlus className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No members yet</p>
+                <p className="text-sm mt-1">Add your first wrestler to get started</p>
+                <Button variant="hero" size="sm" className="mt-4" onClick={() => setAddOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />Add Member
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Wrestler</TableHead>
+                      <TableHead>Program</TableHead>
+                      <TableHead>Age</TableHead>
+                      <TableHead>Weight Class</TableHead>
+                      <TableHead>Parent</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((w) => (
+                      <TableRow key={w.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-navy flex items-center justify-center">
+                              <span className="text-xs font-bold text-white">
+                                {w.full_name.split(" ").map((n) => n[0]).join("")}
+                              </span>
+                            </div>
+                            <p className="font-medium">{w.full_name}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">{w.program}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {getAge(w.date_of_birth) ? `${getAge(w.date_of_birth)} yrs` : '—'}
+                        </TableCell>
+                        <TableCell>{w.weight_class ?? '—'}</TableCell>
+                        <TableCell>
+                          {w.profiles ? (
+                            <div>
+                              <p className="text-sm">{w.profiles.full_name}</p>
+                              <p className="text-xs text-muted-foreground">{w.profiles.email}</p>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={w.status === "active"
+                              ? "bg-wrestling-green/10 text-wrestling-green border-wrestling-green/20"
+                              : "bg-muted text-muted-foreground"
+                            }
+                          >
+                            {w.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Member Dialog */}
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetForm(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">ADD MEMBER</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Wrestler Name *</Label>
+              <Input
+                placeholder="Full name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Date of Birth</Label>
+              <Input
+                type="date"
+                value={newDob}
+                onChange={(e) => setNewDob(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Program</Label>
+              {programs.length > 0 ? (
+                <Select value={newProgram} onValueChange={setNewProgram}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select program" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {programs.map((p) => (
+                      <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  placeholder="e.g. Youth Wrestling"
+                  value={newProgram}
+                  onChange={(e) => setNewProgram(e.target.value)}
+                />
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Weight Class</Label>
+              <Input
+                placeholder="e.g. 106, 113, 120..."
+                value={newWeightClass}
+                onChange={(e) => setNewWeightClass(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Parent Email (optional)</Label>
+              <Input
+                type="email"
+                placeholder="parent@email.com"
+                value={newParentEmail}
+                onChange={(e) => setNewParentEmail(e.target.value)}
+              />
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="hero"
+                className="flex-1"
+                onClick={handleAddMember}
+                disabled={saving || !newName.trim()}
+              >
+                {saving ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                ) : (
+                  "Add Member"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
