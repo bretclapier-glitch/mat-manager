@@ -1,86 +1,106 @@
 import { useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 import { useClubData } from "@/components/layout/ClubLayout";
-import { Trophy, Mail, Lock, ArrowLeft } from "lucide-react";
+import { Loader2, Trophy } from "lucide-react";
 
 export default function ClubParentLogin() {
   const { clubSlug } = useParams();
-  const club = useClubData();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
+  const location = useLocation();
+  const club = useClubData();
   const basePath = `/wrestling/club/${clubSlug}`;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Where to go after login — default to parent dashboard
+  const redirectTo = (location.state as any)?.redirectTo ?? `${basePath}/parent`;
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // TODO: real auth
-    navigate(`${basePath}/parent`);
-  };
+    setError(null);
+    setLoading(true);
+
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      setError("Invalid email or password. Please try again.");
+      setLoading(false);
+    } else {
+      navigate(redirectTo);
+    }
+  }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-navy flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-12 h-12 rounded-lg bg-gold flex items-center justify-center">
-              <Trophy className="h-7 w-7 text-navy" />
-            </div>
+          <div className="w-16 h-16 rounded-2xl bg-gold/20 flex items-center justify-center mx-auto mb-4">
+            <Trophy className="h-8 w-8 text-gold" />
           </div>
-          <h1 className="text-2xl font-bold mb-1">Parent Login</h1>
-          <p className="text-muted-foreground">
-            Sign in to manage your wrestlers at {club.name}
-          </p>
+          <h1 className="text-3xl font-display text-white">{club?.name?.toUpperCase() ?? 'MAT MANAGER'}</h1>
+          <p className="text-white/60 mt-2">Parent portal</p>
         </div>
 
-        <div className="bg-card rounded-2xl shadow-card p-8 border">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Card className="shadow-2xl">
+          <CardHeader>
+            <CardTitle className="text-xl font-display">WELCOME BACK</CardTitle>
+            <CardDescription>Sign in to manage your wrestlers</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="parent@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  required
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  required
                 />
               </div>
-            </div>
-            <Button type="submit" variant="hero" className="w-full" size="lg">
-              Sign In
-            </Button>
-          </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link
-              to={`${basePath}/programs`}
-              className="text-gold font-semibold hover:underline"
-            >
-              Register your wrestler
-            </Link>
-          </div>
-        </div>
+              {error && (
+                <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+                {loading ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Signing in...</>
+                ) : "Sign In"}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              Don't have an account?{" "}
+              <Link to="/wrestling/signup" className="text-gold hover:underline font-medium">
+                Create account
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
