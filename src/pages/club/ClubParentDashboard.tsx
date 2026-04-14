@@ -78,12 +78,24 @@ export default function ClubParentDashboard() {
   async function loadClubAndData(slug: string) {
     setLoading(true);
     try {
-      // Get club by slug
-      const { data: club } = await supabase
+      // Find club by slug first, then try by id
+      let club = null;
+      const { data: clubBySlug } = await supabase
         .from('clubs')
         .select('id')
         .eq('slug', slug)
-        .single();
+        .maybeSingle();
+
+      if (clubBySlug) {
+        club = clubBySlug;
+      } else {
+        const { data: clubById } = await supabase
+          .from('clubs')
+          .select('id')
+          .eq('id', slug)
+          .maybeSingle();
+        club = clubById;
+      }
 
       if (!club) {
         setLoading(false);
