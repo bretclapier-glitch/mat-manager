@@ -1,17 +1,26 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useClubData } from "@/components/layout/ClubLayout";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Calendar,
   Clock,
   Users,
   ArrowRight,
   CheckCircle,
+  LogIn,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const programs = [
   {
@@ -70,7 +79,22 @@ const programs = [
 
 export default function ClubPrograms() {
   const { clubSlug } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const basePath = `/wrestling/club/${clubSlug}`;
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+
+  function handleRegisterClick(programId: number) {
+    if (user) {
+      // Logged in — go straight to registration
+      navigate(`${basePath}/register/${programId}`);
+    } else {
+      // Not logged in — show login prompt
+      setSelectedProgramId(programId);
+      setLoginPromptOpen(true);
+    }
+  }
 
   return (
     <div className="py-16 bg-secondary/30">
@@ -123,9 +147,7 @@ export default function ClubPrograms() {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {spotsLeft} spots remaining
-                      </span>
+                      <span className="text-muted-foreground">{spotsLeft} spots remaining</span>
                       <span className="font-medium">{Math.round(fillPercent)}% full</span>
                     </div>
                     <Progress value={fillPercent} className="h-2" />
@@ -133,28 +155,58 @@ export default function ClubPrograms() {
 
                   <div className="flex flex-wrap gap-2">
                     {program.features.map((feature) => (
-                      <div
-                        key={feature}
-                        className="flex items-center gap-1 text-sm bg-secondary/50 px-2 py-1 rounded"
-                      >
+                      <div key={feature} className="flex items-center gap-1 text-sm bg-secondary/50 px-2 py-1 rounded">
                         <CheckCircle className="h-3 w-3 text-wrestling-green" />
                         <span>{feature}</span>
                       </div>
                     ))}
                   </div>
 
-                  <Link to={`${basePath}/register/${program.id}`}>
-                    <Button variant="hero" className="w-full mt-4">
-                      Register Now
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
+                  <Button
+                    variant="hero"
+                    className="w-full mt-4"
+                    onClick={() => handleRegisterClick(program.id)}
+                  >
+                    Register Now
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
                 </CardContent>
               </Card>
             );
           })}
         </div>
       </div>
+
+      {/* Login required dialog */}
+      <Dialog open={loginPromptOpen} onOpenChange={setLoginPromptOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">ACCOUNT REQUIRED</DialogTitle>
+            <DialogDescription>
+              You need a parent account to register a wrestler. It only takes a minute to set up.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <Link
+              to={`${basePath}/login`}
+              state={{ redirectTo: selectedProgramId ? `${basePath}/register/${selectedProgramId}` : undefined }}
+            >
+              <Button variant="hero" className="w-full" onClick={() => setLoginPromptOpen(false)}>
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Button>
+            </Link>
+            <Link
+              to="/wrestling/signup"
+              state={{ redirectTo: selectedProgramId ? `${basePath}/register/${selectedProgramId}` : undefined }}
+            >
+              <Button variant="outline" className="w-full" onClick={() => setLoginPromptOpen(false)}>
+                Create Parent Account
+              </Button>
+            </Link>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
