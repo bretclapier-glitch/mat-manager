@@ -94,17 +94,29 @@ export default function ClubParentMessages() {
       if (!club) { setLoadingChannels(false); return; }
       setClubId(club.id);
 
-      // Parents only see public channels
-      const { data } = await supabase
-        .from('message_channels')
-        .select('*')
-        .eq('club_id', club.id)
-        .eq('is_private', false)
-        .order('name');
+      // Get public channels + private channels parent is a member of
+      const [{ data: publicChannels }, { data: privateChannels }] = await Promise.all([
+        supabase
+          .from('message_channels')
+          .select('*')
+          .eq('club_id', club.id)
+          .eq('is_private', false)
+          .order('name'),
+        supabase
+          .from('message_channels')
+          .select('*, channel_members!inner(profile_id)')
+          .eq('club_id', club.id)
+          .eq('is_private', true)
+          .eq('channel_members.profile_id', user?.id ?? ''),
+      ]);
 
-      const chs = (data ?? []) as Channel[];
-      setChannels(chs);
-      if (chs.length > 0) setSelectedChannel(chs[0]);
+      const allChannels = [
+        ...(publicChannels ?? []),
+        ...(privateChannels ?? []),
+      ].sort((a, b) => a.name.localeCompare(b.name)) as Channel[];
+
+      setChannels(allChannels);
+      if (allChannels.length > 0) setSelectedChannel(allChannels[0]);
     } catch (err) {
       console.error('Channels load error:', err);
     } finally {
