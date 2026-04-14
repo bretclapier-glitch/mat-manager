@@ -1,10 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { 
   Plus, 
@@ -14,10 +11,10 @@ import {
   Clock,
   AlertCircle,
   ArrowRight,
-  Download,
-  Copy,
   Send,
-  Bell
+  Bell,
+  Loader2,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -25,96 +22,121 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 
-const registrations = [
-  { 
-    id: 1, 
-    name: "Marcus Johnson", 
-    program: "Youth Wrestling",
-    parent: "David Johnson",
-    status: "pending",
-    waiver: false,
-    payment: true,
-    date: "Feb 3, 2024"
-  },
-  { 
-    id: 2, 
-    name: "Emily Chen", 
-    program: "High School",
-    parent: "Lisa Chen",
-    status: "complete",
-    waiver: true,
-    payment: true,
-    date: "Feb 2, 2024"
-  },
-  { 
-    id: 3, 
-    name: "Tyler Williams", 
-    program: "Middle School",
-    parent: "Sarah Williams",
-    status: "pending",
-    waiver: true,
-    payment: false,
-    date: "Feb 1, 2024"
-  },
-  { 
-    id: 4, 
-    name: "Olivia Brown", 
-    program: "Youth Wrestling",
-    parent: "Michael Brown",
-    status: "complete",
-    waiver: true,
-    payment: true,
-    date: "Jan 30, 2024"
-  },
-];
+type Registration = {
+  id: string;
+  program: string;
+  status: string;
+  created_at: string;
+  wrestlers?: { full_name: string; profiles?: { full_name: string } | null } | null;
+};
 
-const programs = [
-  { name: "Youth Wrestling", price: 150, spots: 24, filled: 18 },
-  { name: "Middle School", price: 200, spots: 20, filled: 15 },
-  { name: "High School", price: 250, spots: 25, filled: 22 },
-  { name: "Summer Camp", price: 300, spots: 40, filled: 8 },
-];
+type Program = {
+  id: string;
+  name: string;
+  price: number | null;
+};
 
 export default function Registration() {
-  const [showWaiverPreview, setShowWaiverPreview] = useState(false);
+  const { profile } = useAuth();
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [waiverOpen, setWaiverOpen] = useState(false);
+
+  useEffect(() => {
+    if (profile?.club_id) {
+      loadRegistrations(profile.club_id);
+      loadPrograms(profile.club_id);
+    }
+  }, [profile]);
+
+  async function loadRegistrations(clubId: string) {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('registrations')
+      .select('*, wrestlers(full_name, profiles(full_name))')
+      .eq('club_id', clubId)
+      .order('created_at', { ascending: false });
+
+    if (!error) setRegistrations((data ?? []) as Registration[]);
+    setLoading(false);
+  }
+
+  async function loadPrograms(clubId: string) {
+    const { data } = await supabase
+      .from('programs')
+      .select('id, name, price')
+      .eq('club_id', clubId)
+      .order('name');
+    setPrograms((data ?? []) as Program[]);
+  }
+
+  async function updateStatus(id: string, status: string) {
+    const { error } = await supabase
+      .from('registrations')
+      .update({ status })
+      .eq('id', id);
+
+    if (!error && profile?.club_id) {
+      loadRegistrations(profile.club_id);
+      toast.success('Registration status updated');
+    }
+  }
+
+  function sendReminder(name: string) {
+    toast.success(`Reminder sent`, {
+      description: `Nudge sent to complete ${name}'s registration.`
+    });
+  }
+
+  function sendAllReminders() {
+    const pendingCount = registrations.filter(r => r.status === 'pending').length;
+    toast.success(`Reminders sent to ${pendingCount} incomplete registrations`, {
+      description: "Parents will receive an email to complete their registration."
+    });
+  }
+
+  function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // Get registration counts per program
+  function getProgramCount(programName: string) {
+    return registrations.filter(r => r.program === programName).length;
+  }
 
   const stats = {
     total: registrations.length,
-    complete: registrations.filter(r => r.status === "complete").length,
-    pending: registrations.filter(r => r.status === "pending").length,
+    complete: registrations.filter(r => r.status === 'complete').length,
+    pending: registrations.filter(r => r.status === 'pending').length,
   };
+
+  const pendingCount = registrations.filter(r => r.status === 'pending').length;
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display">REGISTRATION</h1>
             <p className="text-muted-foreground">Manage wrestler registrations and waivers</p>
           </div>
-           <div className="flex gap-3">
-             <Button variant="outline" onClick={() => {
-               const pendingCount = registrations.filter(r => r.status === "pending").length;
-               toast.success(`Reminder sent to ${pendingCount} incomplete registrations`, {
-                 description: "Parents will receive an email to complete their registration."
-               });
-             }}>
-               <Bell className="h-4 w-4 mr-2" />
-               Send All Reminders ({registrations.filter(r => r.status === "pending").length})
-             </Button>
-             <Button variant="outline">
-               <Copy className="h-4 w-4 mr-2" />
-               Copy Link
-             </Button>
-             <Button variant="hero">
-               <Plus className="h-4 w-4 mr-2" />
-               Add Wrestler
-             </Button>
-           </div>
+          <div className="flex gap-3">
+            {pendingCount > 0 && (
+              <Button variant="outline" onClick={sendAllReminders}>
+                <Bell className="h-4 w-4 mr-2" />
+                Send Reminders ({pendingCount})
+              </Button>
+            )}
+            <Button variant="hero" onClick={() => window.open(`/wrestling/club/${profile?.club_id}/programs`, '_blank')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Registration Link
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -164,78 +186,92 @@ export default function Registration() {
           {/* Registrations Table */}
           <Card className="lg:col-span-2 shadow-card">
             <CardHeader>
-              <CardTitle className="text-xl font-display">RECENT REGISTRATIONS</CardTitle>
+              <CardTitle className="text-xl font-display">REGISTRATIONS</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="pb-3 font-medium text-muted-foreground">Wrestler</th>
-                      <th className="pb-3 font-medium text-muted-foreground">Program</th>
-                      <th className="pb-3 font-medium text-muted-foreground">Waiver</th>
-                      <th className="pb-3 font-medium text-muted-foreground">Payment</th>
-                      <th className="pb-3 font-medium text-muted-foreground">Status</th>
-                      <th className="pb-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {registrations.map((reg) => (
-                      <tr key={reg.id} className="border-b last:border-0">
-                        <td className="py-4">
-                          <div>
-                            <p className="font-medium">{reg.name}</p>
-                            <p className="text-sm text-muted-foreground">{reg.parent}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 text-sm">{reg.program}</td>
-                        <td className="py-4">
-                          {reg.waiver ? (
-                            <CheckCircle className="h-5 w-5 text-wrestling-green" />
-                          ) : (
-                            <AlertCircle className="h-5 w-5 text-gold" />
-                          )}
-                        </td>
-                        <td className="py-4">
-                          {reg.payment ? (
-                            <CheckCircle className="h-5 w-5 text-wrestling-green" />
-                          ) : (
-                            <AlertCircle className="h-5 w-5 text-gold" />
-                          )}
-                        </td>
-                        <td className="py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            reg.status === "complete" 
-                              ? "bg-wrestling-green/10 text-wrestling-green" 
-                              : "bg-gold/10 text-gold"
-                          }`}>
-                            {reg.status}
-                          </span>
-                        </td>
-                        <td className="py-4">
-                          <div className="flex items-center gap-1">
-                            {reg.status === "pending" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toast.success(`Reminder sent to ${reg.parent}`, {
-                                  description: `Nudge to complete ${reg.name}'s registration.`
-                                })}
-                                title="Send reminder"
-                              >
-                                <Send className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="sm">
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-gold" />
+                </div>
+              ) : registrations.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">No registrations yet</p>
+                  <p className="text-sm mt-1">Registrations will appear here when parents sign up</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="pb-3 font-medium text-muted-foreground">Wrestler</th>
+                        <th className="pb-3 font-medium text-muted-foreground">Program</th>
+                        <th className="pb-3 font-medium text-muted-foreground">Date</th>
+                        <th className="pb-3 font-medium text-muted-foreground">Status</th>
+                        <th className="pb-3"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {registrations.map((reg) => (
+                        <tr key={reg.id} className="border-b last:border-0">
+                          <td className="py-4">
+                            <div>
+                              <p className="font-medium">
+                                {reg.wrestlers?.full_name ?? 'Unknown'}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {reg.wrestlers?.profiles?.full_name ?? ''}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-4 text-sm">{reg.program}</td>
+                          <td className="py-4 text-sm text-muted-foreground">
+                            {formatDate(reg.created_at)}
+                          </td>
+                          <td className="py-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              reg.status === 'complete'
+                                ? 'bg-wrestling-green/10 text-wrestling-green'
+                                : reg.status === 'cancelled'
+                                ? 'bg-wrestling-red/10 text-wrestling-red'
+                                : 'bg-gold/10 text-gold'
+                            }`}>
+                              {reg.status}
+                            </span>
+                          </td>
+                          <td className="py-4">
+                            <div className="flex items-center gap-1">
+                              {reg.status === 'pending' && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => sendReminder(reg.wrestlers?.full_name ?? 'wrestler')}
+                                    title="Send reminder"
+                                  >
+                                    <Send className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => updateStatus(reg.id, 'complete')}
+                                    title="Mark complete"
+                                  >
+                                    <CheckCircle className="h-4 w-4 text-wrestling-green" />
+                                  </Button>
+                                </>
+                              )}
+                              <Button variant="ghost" size="sm">
+                                <ArrowRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -247,19 +283,29 @@ export default function Registration() {
                 <CardTitle className="text-xl font-display">PROGRAMS</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {programs.map((program) => (
-                  <div key={program.name} className="p-3 rounded-lg bg-secondary/50">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{program.name}</span>
-                      <span className="text-sm font-bold text-gold">${program.price}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-                      <span>{program.filled} / {program.spots} spots</span>
-                      <span>{Math.round((program.filled / program.spots) * 100)}%</span>
-                    </div>
-                    <Progress value={(program.filled / program.spots) * 100} className="h-2" />
-                  </div>
-                ))}
+                {programs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No programs set up yet
+                  </p>
+                ) : (
+                  programs.map((program) => {
+                    const count = getProgramCount(program.name);
+                    return (
+                      <div key={program.id} className="p-3 rounded-lg bg-secondary/50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium">{program.name}</span>
+                          {program.price && (
+                            <span className="text-sm font-bold text-gold">${program.price}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+                          <span>{count} registered</span>
+                        </div>
+                        <Progress value={Math.min(count * 10, 100)} className="h-2" />
+                      </div>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
 
@@ -273,52 +319,16 @@ export default function Registration() {
                   <FileText className="h-8 w-8 text-gold" />
                   <div className="flex-1">
                     <p className="font-medium">Club Liability Waiver</p>
-                    <p className="text-sm text-muted-foreground">Last updated Feb 1, 2024</p>
+                    <p className="text-sm text-muted-foreground">Required for all wrestlers</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="flex-1">Preview</Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle className="text-2xl font-display">LIABILITY WAIVER</DialogTitle>
-                      </DialogHeader>
-                      <div className="prose prose-sm">
-                        <h3>Release and Waiver of Liability</h3>
-                        <p>
-                          In consideration of being permitted to participate in wrestling activities 
-                          at Thunder Wrestling Club, I hereby agree to the following:
-                        </p>
-                        <h4>1. Assumption of Risk</h4>
-                        <p>
-                          I understand that wrestling involves inherent risks including but not limited to 
-                          physical contact, falls, collisions, and the potential for serious injury.
-                        </p>
-                        <h4>2. Release of Liability</h4>
-                        <p>
-                          I release and hold harmless Thunder Wrestling Club, its coaches, volunteers, 
-                          and affiliates from any claims, damages, or losses arising from participation.
-                        </p>
-                        <h4>3. Medical Authorization</h4>
-                        <p>
-                          I authorize club personnel to seek emergency medical treatment for the 
-                          participant if necessary and agree to be responsible for all medical expenses.
-                        </p>
-                        <h4>4. Photo/Video Release</h4>
-                        <p>
-                          I grant permission for photos and videos taken during club activities to be 
-                          used for promotional purposes.
-                        </p>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  <Button variant="outline" className="flex-1">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setWaiverOpen(true)}
+                >
+                  Preview Waiver
+                </Button>
                 <Button variant="hero" className="w-full">
                   Edit Waiver
                 </Button>
@@ -327,6 +337,27 @@ export default function Registration() {
           </div>
         </div>
       </div>
+
+      {/* Waiver Preview Dialog */}
+      <Dialog open={waiverOpen} onOpenChange={setWaiverOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-display">LIABILITY WAIVER</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm leading-relaxed">
+            <h3 className="font-bold text-lg">Release and Waiver of Liability</h3>
+            <p>In consideration of being permitted to participate in wrestling activities at this club, I hereby agree to the following:</p>
+            <h4 className="font-semibold">1. Assumption of Risk</h4>
+            <p>I understand that wrestling involves inherent risks including but not limited to physical contact, falls, collisions, and the potential for serious injury.</p>
+            <h4 className="font-semibold">2. Release of Liability</h4>
+            <p>I release and hold harmless this wrestling club, its coaches, volunteers, and affiliates from any claims, damages, or losses arising from participation.</p>
+            <h4 className="font-semibold">3. Medical Authorization</h4>
+            <p>I authorize club personnel to seek emergency medical treatment for the participant if necessary and agree to be responsible for all medical expenses.</p>
+            <h4 className="font-semibold">4. Photo/Video Release</h4>
+            <p>I grant permission for photos and videos taken during club activities to be used for promotional purposes.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
