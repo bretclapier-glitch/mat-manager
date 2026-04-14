@@ -1,26 +1,168 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   User,
   Lock,
-  CreditCard,
   Bell,
   Globe,
   Shield,
+  Loader2,
   CheckCircle,
+  Save,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function Settings() {
+  const { profile, user } = useAuth();
+
+  // Profile state
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Password state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // Club state
+  const [clubName, setClubName] = useState("");
+  const [clubDescription, setClubDescription] = useState("");
+  const [clubPhone, setClubPhone] = useState("");
+  const [clubWebsite, setClubWebsite] = useState("");
+  const [clubAddress, setClubAddress] = useState("");
+  const [clubCity, setClubCity] = useState("");
+  const [clubState, setClubState] = useState("");
+  const [clubZip, setClubZip] = useState("");
+  const [clubSlug, setClubSlug] = useState("");
+  const [savingClub, setSavingClub] = useState(false);
+
+  // Notification state
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [smsNotifs, setSmsNotifs] = useState(false);
   const [pushNotifs, setPushNotifs] = useState(true);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name ?? "");
+      setEmail(profile.email ?? "");
+      loadClub();
+    }
+  }, [profile]);
+
+  async function loadClub() {
+    if (!profile?.club_id) { setLoading(false); return; }
+    const { data } = await supabase
+      .from('clubs')
+      .select('*')
+      .eq('id', profile.club_id)
+      .single();
+
+    if (data) {
+      setClubName(data.name ?? "");
+      setClubDescription(data.description ?? "");
+      setClubPhone(data.phone ?? "");
+      setClubWebsite(data.website_url ?? "");
+      setClubAddress(data.address ?? "");
+      setClubCity(data.city ?? "");
+      setClubState(data.state ?? "");
+      setClubZip(data.zip ?? "");
+      setClubSlug(data.slug ?? "");
+    }
+    setLoading(false);
+  }
+
+  async function saveProfile() {
+    if (!user) return;
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      toast.success("Profile updated successfully");
+    } catch (err) {
+      toast.error("Failed to update profile");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function savePassword() {
+    setPasswordError(null);
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Password updated successfully");
+    } catch (err) {
+      toast.error("Failed to update password");
+    } finally {
+      setSavingPassword(false);
+    }
+  }
+
+  async function saveClub() {
+    if (!profile?.club_id) return;
+    setSavingClub(true);
+    try {
+      const { error } = await supabase
+        .from('clubs')
+        .update({
+          name: clubName,
+          description: clubDescription,
+          phone: clubPhone,
+          website_url: clubWebsite,
+          address: clubAddress,
+          city: clubCity,
+          state: clubState,
+          zip: clubZip,
+        })
+        .eq('id', profile.club_id);
+
+      if (error) throw error;
+      toast.success("Club settings saved successfully");
+    } catch (err) {
+      toast.error("Failed to save club settings");
+    } finally {
+      setSavingClub(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-gold" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -31,12 +173,19 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid grid-cols-5 w-full">
-            <TabsTrigger value="profile" className="text-xs sm:text-sm"><User className="h-4 w-4 mr-1 hidden sm:inline" />Profile</TabsTrigger>
-            <TabsTrigger value="security" className="text-xs sm:text-sm"><Lock className="h-4 w-4 mr-1 hidden sm:inline" />Security</TabsTrigger>
-            <TabsTrigger value="subscription" className="text-xs sm:text-sm"><CreditCard className="h-4 w-4 mr-1 hidden sm:inline" />Plan</TabsTrigger>
-            <TabsTrigger value="notifications" className="text-xs sm:text-sm"><Bell className="h-4 w-4 mr-1 hidden sm:inline" />Notifications</TabsTrigger>
-            <TabsTrigger value="club" className="text-xs sm:text-sm"><Globe className="h-4 w-4 mr-1 hidden sm:inline" />Club</TabsTrigger>
+          <TabsList className="grid grid-cols-4 w-full">
+            <TabsTrigger value="profile" className="text-xs sm:text-sm">
+              <User className="h-4 w-4 mr-1 hidden sm:inline" />Profile
+            </TabsTrigger>
+            <TabsTrigger value="security" className="text-xs sm:text-sm">
+              <Lock className="h-4 w-4 mr-1 hidden sm:inline" />Security
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="text-xs sm:text-sm">
+              <Bell className="h-4 w-4 mr-1 hidden sm:inline" />Notifications
+            </TabsTrigger>
+            <TabsTrigger value="club" className="text-xs sm:text-sm">
+              <Globe className="h-4 w-4 mr-1 hidden sm:inline" />Club
+            </TabsTrigger>
           </TabsList>
 
           {/* Profile */}
@@ -47,25 +196,35 @@ export default function Settings() {
                 <CardDescription>Update your personal details.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>First Name</Label>
-                    <Input defaultValue="John" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Last Name</Label>
-                    <Input defaultValue="Doe" />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Full Name</Label>
+                  <Input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Your full name"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>
-                  <Input type="email" defaultValue="john@thunderwrestling.com" />
+                  <Input
+                    type="email"
+                    value={email}
+                    disabled
+                    className="opacity-60"
+                  />
+                  <p className="text-xs text-muted-foreground">Email cannot be changed here. Contact support if needed.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Phone</Label>
-                  <Input type="tel" defaultValue="(555) 123-4567" />
+                  <Label>Role</Label>
+                  <Input value={profile?.role ?? ""} disabled className="opacity-60 capitalize" />
                 </div>
-                <Button variant="hero">Save Changes</Button>
+                <Button variant="hero" onClick={saveProfile} disabled={savingProfile}>
+                  {savingProfile ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                  ) : (
+                    <><Save className="h-4 w-4 mr-2" />Save Changes</>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -78,77 +237,40 @@ export default function Settings() {
                 <CardDescription>Keep your account secure.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Current Password</Label>
-                  <Input type="password" placeholder="••••••••" />
-                </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>New Password</Label>
-                    <Input type="password" placeholder="••••••••" />
+                    <Input
+                      type="password"
+                      placeholder="Min. 6 characters"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Confirm New Password</Label>
-                    <Input type="password" placeholder="••••••••" />
-                  </div>
-                </div>
-                <Button variant="hero">Update Password</Button>
-
-                <div className="border-t pt-6 space-y-4">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-gold" />
-                    Two-Factor Authentication
-                  </h3>
-                  <p className="text-sm text-muted-foreground">Add an extra layer of security to your account.</p>
-                  <Button variant="outline">Enable 2FA</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Subscription */}
-          <TabsContent value="subscription">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="font-display">SUBSCRIPTION & BILLING</CardTitle>
-                <CardDescription>Manage your plan and payment methods.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="p-4 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-lg">Pro Plan</h3>
-                      <Badge className="bg-gold text-navy">Active</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">$49/month • Renews March 1, 2024</p>
-                  </div>
-                  <Button variant="outline">Change Plan</Button>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-semibold">Plan Features</h4>
-                  {["Up to 200 members", "Unlimited messaging", "Payment processing", "Custom website", "Merch store", "Priority support"].map((f) => (
-                    <div key={f} className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-wrestling-green" />
-                      <span>{f}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t pt-6 space-y-4">
-                  <h4 className="font-semibold">Payment Method</h4>
-                  <div className="p-3 rounded-lg bg-secondary/50 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm">Visa ending in 4242</span>
-                    </div>
-                    <Button variant="ghost" size="sm">Update</Button>
+                    <Input
+                      type="password"
+                      placeholder="Confirm password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <div className="border-t pt-6">
-                  <Button variant="ghost" className="text-destructive hover:text-destructive">Cancel Subscription</Button>
-                </div>
+                {passwordError && (
+                  <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
+                    {passwordError}
+                  </div>
+                )}
+
+                <Button variant="hero" onClick={savePassword} disabled={savingPassword || !newPassword}>
+                  {savingPassword ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</>
+                  ) : (
+                    <><Shield className="h-4 w-4 mr-2" />Update Password</>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -174,6 +296,9 @@ export default function Settings() {
                     <Switch checked={n.checked} onCheckedChange={n.onChange} />
                   </div>
                 ))}
+                <Button variant="hero" onClick={() => toast.success("Notification preferences saved")}>
+                  <Save className="h-4 w-4 mr-2" />Save Preferences
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -188,29 +313,94 @@ export default function Settings() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label>Club Name</Label>
-                  <Input defaultValue="Thunder Wrestling Club" />
+                  <Input
+                    value={clubName}
+                    onChange={(e) => setClubName(e.target.value)}
+                    placeholder="Your club name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Club Description</Label>
+                  <Textarea
+                    value={clubDescription}
+                    onChange={(e) => setClubDescription(e.target.value)}
+                    placeholder="Tell parents about your club..."
+                    rows={3}
+                  />
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>USA Wrestling Club ID</Label>
-                    <Input defaultValue="TX-12345" />
+                    <Label>Phone</Label>
+                    <Input
+                      value={clubPhone}
+                      onChange={(e) => setClubPhone(e.target.value)}
+                      placeholder="(555) 123-4567"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Club Website Slug</Label>
-                    <Input defaultValue="thunder" />
+                    <Label>Website</Label>
+                    <Input
+                      value={clubWebsite}
+                      onChange={(e) => setClubWebsite(e.target.value)}
+                      placeholder="www.yourclub.com"
+                    />
                   </div>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Street Address</Label>
+                  <Input
+                    value={clubAddress}
+                    onChange={(e) => setClubAddress(e.target.value)}
+                    placeholder="123 Main St"
+                  />
+                </div>
+                <div className="grid sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>City</Label>
-                    <Input defaultValue="Austin" />
+                    <Input
+                      value={clubCity}
+                      onChange={(e) => setClubCity(e.target.value)}
+                      placeholder="Austin"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>State</Label>
-                    <Input defaultValue="TX" />
+                    <Input
+                      value={clubState}
+                      onChange={(e) => setClubState(e.target.value)}
+                      placeholder="TX"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>ZIP</Label>
+                    <Input
+                      value={clubZip}
+                      onChange={(e) => setClubZip(e.target.value)}
+                      placeholder="78701"
+                    />
                   </div>
                 </div>
-                <Button variant="hero">Save Club Settings</Button>
+
+                <div className="space-y-2">
+                  <Label>Club URL Slug</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">mat-manager.vercel.app/wrestling/club/</span>
+                    <Input
+                      value={clubSlug}
+                      disabled
+                      className="opacity-60 max-w-48"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">URL slug cannot be changed after setup.</p>
+                </div>
+
+                <Button variant="hero" onClick={saveClub} disabled={savingClub}>
+                  {savingClub ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                  ) : (
+                    <><Save className="h-4 w-4 mr-2" />Save Club Settings</>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
