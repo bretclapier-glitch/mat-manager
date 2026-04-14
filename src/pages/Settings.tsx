@@ -187,7 +187,17 @@ export default function Settings() {
           .from('programs')
           .insert(programData);
         if (error) throw error;
-        toast.success("Program added successfully");
+
+        // Auto-create a private channel for this program
+        const channelSlug = pName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        await supabase.from('message_channels').insert({
+          name: channelSlug,
+          description: `Private channel for ${pName} parents`,
+          is_private: true,
+          club_id: profile.club_id,
+        });
+
+        toast.success("Program added and private channel created");
       }
       setProgramDialogOpen(false);
       loadPrograms();
