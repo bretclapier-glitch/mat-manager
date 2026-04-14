@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useClubData } from "@/components/layout/ClubLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 import {
   Calendar,
   Clock,
@@ -13,6 +13,8 @@ import {
   ArrowRight,
   CheckCircle,
   LogIn,
+  Loader2,
+  Trophy,
 } from "lucide-react";
 import {
   Dialog,
@@ -22,78 +24,124 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-const programs = [
-  {
-    id: 1,
-    name: "Youth Wrestling",
-    ageRange: "6-10 years",
-    price: 150,
-    duration: "8 weeks",
-    schedule: "Tue/Thu 5:00-6:00 PM",
-    spots: 24,
-    filled: 18,
-    description: "Introduction to wrestling fundamentals in a fun, supportive environment.",
-    features: ["Basic techniques", "Fitness & conditioning", "Team building", "Tournament prep"],
-    startDate: "March 1, 2024",
-  },
-  {
-    id: 2,
-    name: "Middle School",
-    ageRange: "11-14 years",
-    price: 200,
-    duration: "10 weeks",
-    schedule: "Mon/Wed/Fri 4:00-5:30 PM",
-    spots: 20,
-    filled: 15,
-    description: "Intermediate program for developing wrestlers ready to compete.",
-    features: ["Advanced techniques", "Competition prep", "Strength training", "Video analysis"],
-    startDate: "March 1, 2024",
-  },
-  {
-    id: 3,
-    name: "High School",
-    ageRange: "14-18 years",
-    price: 250,
-    duration: "12 weeks",
-    schedule: "Mon-Fri 3:30-5:30 PM",
-    spots: 25,
-    filled: 22,
-    description: "Elite training for serious competitors looking to excel at the varsity level.",
-    features: ["Elite coaching", "College recruitment", "Mental training", "Nutrition guidance"],
-    startDate: "March 1, 2024",
-  },
-  {
-    id: 4,
-    name: "Summer Camp",
-    ageRange: "6-18 years",
-    price: 300,
-    duration: "1 week",
-    schedule: "Mon-Fri 9:00 AM - 3:00 PM",
-    spots: 40,
-    filled: 8,
-    description: "Intensive week-long camp with guest coaches and specialized clinics.",
-    features: ["Guest coaches", "Daily competitions", "Technique clinics", "Team activities"],
-    startDate: "June 10, 2024",
-  },
-];
+type Program = {
+  id: string;
+  name: string;
+  description: string | null;
+  season_start: string | null;
+  season_end: string | null;
+  practice_days: string[];
+  practice_time: string | null;
+  practice_end_time: string | null;
+  price: number | null;
+  payment_type: string;
+  club_id: string;
+};
 
 export default function ClubPrograms() {
   const { clubSlug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const basePath = `/wrestling/club/${clubSlug}`;
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
 
-  function handleRegisterClick(programId: number) {
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [registrationCounts, setRegistrationCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (clubSlug) loadPrograms(clubSlug);
+  }, [clubSlug]);
+
+  async function loadPrograms(slug: string) {
+    setLoading(true);
+    try {
+      // Find club by slug or id
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let club = null;
+      if (uuidRegex.test(slug)) {
+        const { data } = await supabase.from('clubs').select('id').eq('id', slug).maybeSingle();
+        club = data;
+      } else {
+        const { data } = await supabase.from('clubs').select('id').eq('slug', slug).maybeSingle();
+        club = data;
+      }
+
+      if (!club) { setLoading(false); return; }
+
+      const { data: programData } = await supabase
+        .from('programs')
+        .select('*')
+        .eq('club_id', club.id)
+        .order('name');
+
+      if (programData) {
+        setPrograms(programData as Program[]);
+
+        // Get registration counts per program
+        const counts: Record<string, number> = {};
+        await Promise.all(
+          programData.map(async (p) => {
+            const { count } = await supabase
+              .from('registrations')
+              .select('*', { count: 'exact', head: true })
+              .eq('club_id', club.id)
+              .eq('program', p.name);
+            counts[p.id] = count ?? 0;
+          })
+        );
+        setRegistrationCounts(counts);
+      }
+    } catch (err) {
+      console.error('Programs load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleRegisterClick(programId: string) {
     if (user) {
-      // Logged in — go straight to registration
       navigate(`${basePath}/register/${programId}`);
     } else {
-      // Not logged in — show login prompt
       setSelectedProgramId(programId);
       setLoginPromptOpen(true);
     }
+  }
+
+  function formatSchedule(program: Program) {
+    const days = Array.isArray(program.practice_days) ? program.practice_days.join('/') : '';
+    const time = program.practice_time ?? '';
+    const endTime = program.practice_end_time ?? '';
+    if (days && time) return `${days} ${time}${endTime ? ` - ${endTime}` : ''}`;
+    if (time) return time;
+    return 'Schedule TBD';
+  }
+
+  function formatDateRange(program: Program) {
+    if (program.season_start) {
+      const start = new Date(program.season_start).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+      return `Starts ${start}`;
+    }
+    return 'Date TBD';
+  }
+
+  if (loading) {
+    return (
+      <div className="py-32 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
+  }
+
+  if (programs.length === 0) {
+    return (
+      <div className="py-32 text-center">
+        <Trophy className="h-16 w-16 mx-auto mb-4 opacity-20" />
+        <h2 className="text-2xl font-display mb-2">NO PROGRAMS YET</h2>
+        <p className="text-muted-foreground">Check back soon — programs will be listed here.</p>
+      </div>
+    );
   }
 
   return (
@@ -109,8 +157,7 @@ export default function ClubPrograms() {
 
         <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
           {programs.map((program) => {
-            const spotsLeft = program.spots - program.filled;
-            const fillPercent = (program.filled / program.spots) * 100;
+            const registrations = registrationCounts[program.id] ?? 0;
 
             return (
               <Card key={program.id} className="shadow-card hover:shadow-lg transition-shadow">
@@ -120,47 +167,40 @@ export default function ClubPrograms() {
                       <CardTitle className="text-2xl font-display">
                         {program.name.toUpperCase()}
                       </CardTitle>
-                      <p className="text-muted-foreground">{program.ageRange}</p>
                     </div>
-                    <Badge variant="outline" className="text-gold border-gold">
-                      ${program.price}
-                    </Badge>
+                    {program.price && (
+                      <Badge variant="outline" className="text-gold border-gold">
+                        ${program.price}
+                        {program.payment_type === 'monthly' ? '/mo' : ''}
+                      </Badge>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-muted-foreground">{program.description}</p>
+                  {program.description && (
+                    <p className="text-muted-foreground">{program.description}</p>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gold" />
-                      <span>Starts {program.startDate}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gold" />
-                      <span>{program.duration}</span>
+                      <span>{formatDateRange(program)}</span>
                     </div>
                     <div className="flex items-center gap-2 col-span-2">
+                      <Clock className="h-4 w-4 text-gold" />
+                      <span>{formatSchedule(program)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-gold" />
-                      <span>{program.schedule}</span>
+                      <span>{registrations} registered</span>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{spotsLeft} spots remaining</span>
-                      <span className="font-medium">{Math.round(fillPercent)}% full</span>
+                  {registrations > 0 && (
+                    <div className="space-y-2">
+                      <Progress value={Math.min(registrations * 5, 100)} className="h-2" />
                     </div>
-                    <Progress value={fillPercent} className="h-2" />
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {program.features.map((feature) => (
-                      <div key={feature} className="flex items-center gap-1 text-sm bg-secondary/50 px-2 py-1 rounded">
-                        <CheckCircle className="h-3 w-3 text-wrestling-green" />
-                        <span>{feature}</span>
-                      </div>
-                    ))}
-                  </div>
+                  )}
 
                   <Button
                     variant="hero"
