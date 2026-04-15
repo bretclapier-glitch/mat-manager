@@ -110,12 +110,11 @@ export default function ClubParentMessages() {
       const memberChannelIds = new Set((membershipData ?? []).map(m => m.channel_id));
 
       // Filter: public channels + private channels they're a member of
+      const allChannels = (allChannelData ?? []).filter(ch =>
+        !ch.is_private || memberChannelIds.has(ch.id)
+      ) as Channel[];
 
-const allChannels = (allChannelData ?? []).filter(ch =>
-  !ch.is_private || memberChannelIds.has(ch.id)
-) as Channel[];
-
-setChannels(allChannels);
+      setChannels(allChannels);
       if (allChannels.length > 0) setSelectedChannel(allChannels[0]);
     } catch (err) {
       console.error('Channels load error:', err);
@@ -259,15 +258,16 @@ setChannels(allChannels);
                     <div className="space-y-4">
                       {messages.map((msg) => {
                         const own = isOwnMessage(msg);
+                        const senderName = msg.profiles?.full_name ?? 'Unknown';
                         return (
                           <div key={msg.id} className={`flex gap-3 ${own ? 'flex-row-reverse' : ''}`}>
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${own ? 'bg-gold text-navy' : 'bg-navy text-white'}`}>
-                              {(msg.profiles?.full_name ?? 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                              {senderName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                             </div>
                             <div className={`max-w-[70%] ${own ? 'items-end' : 'items-start'} flex flex-col`}>
                               <div className={`flex items-center gap-2 mb-1 ${own ? 'flex-row-reverse' : ''}`}>
                                 <span className="text-xs font-semibold">
-                                  {own ? 'You' : (msg.profiles?.full_name ?? 'Unknown')}
+                                  {senderName}{own ? ' (You)' : ''}
                                 </span>
                                 <span className="text-xs text-muted-foreground">{formatTime(msg.created_at)}</span>
                               </div>
@@ -287,29 +287,35 @@ setChannels(allChannels);
                   )}
                 </ScrollArea>
 
-                {/* Input */}
-                <div className="p-4 border-t">
-                  <div className="flex items-end gap-2">
-                    <Textarea
-                      placeholder={`Message #${selectedChannel.name}...`}
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      className="min-h-[44px] max-h-32 resize-none flex-1"
-                      rows={1}
-                    />
-                    <Button
-                      variant="hero"
-                      size="icon"
-                      onClick={sendMessage}
-                      disabled={sending || !newMessage.trim()}
-                      className="flex-shrink-0"
-                    >
-                      {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
+                {/* Input — hidden for announcements channel */}
+                {selectedChannel.name !== 'announcements' ? (
+                  <div className="p-4 border-t">
+                    <div className="flex items-end gap-2">
+                      <Textarea
+                        placeholder={`Message #${selectedChannel.name}...`}
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="min-h-[44px] max-h-32 resize-none flex-1"
+                        rows={1}
+                      />
+                      <Button
+                        variant="hero"
+                        size="icon"
+                        onClick={sendMessage}
+                        disabled={sending || !newMessage.trim()}
+                        className="flex-shrink-0"
+                      >
+                        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Press Enter to send, Shift+Enter for new line</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Press Enter to send, Shift+Enter for new line</p>
-                </div>
+                ) : (
+                  <div className="p-4 border-t bg-secondary/30 text-center">
+                    <p className="text-xs text-muted-foreground">📢 This is a read-only announcements channel. Only coaches can post here.</p>
+                  </div>
+                )}
               </>
             ) : (
               <CardContent className="flex-1 flex items-center justify-center text-muted-foreground">
