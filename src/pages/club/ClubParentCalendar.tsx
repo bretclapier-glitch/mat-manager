@@ -132,9 +132,6 @@ export default function ClubParentCalendar() {
 
   const monthLabel = currentDate.toLocaleDateString([], { month: 'long', year: 'numeric' }).toUpperCase();
 
-  // "My Calendar" shows all club events — in future can filter by wrestler program
-  const myEvents = allEvents;
-
   function EventList({ events }: { events: Event[] }) {
     if (events.length === 0) {
       return (
