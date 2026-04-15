@@ -21,8 +21,9 @@ export default function ClubParentLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const redirectTo = (location.state as any)?.redirectTo ?? `/wrestling/club/${clubSlug}/parent`;
+
   async function getSlug(): Promise<string> {
-    // If clubSlug looks like a UUID, look up the real slug
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (clubSlug && uuidRegex.test(clubSlug)) {
       const { data } = await supabase
@@ -46,10 +47,9 @@ export default function ClubParentLogin() {
       setError("Invalid email or password. Please try again.");
       setLoading(false);
     } else {
-      // Always redirect using the slug, not the ID
       const slug = await getSlug();
-      const redirectTo = (location.state as any)?.redirectTo ?? `/wrestling/club/${slug}/parent`;
-      navigate(redirectTo);
+      const destination = (location.state as any)?.redirectTo ?? `/wrestling/club/${slug}/parent`;
+      navigate(destination);
     }
   }
 
@@ -106,12 +106,25 @@ export default function ClubParentLogin() {
             </form>
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link to="/wrestling/signup" className="text-gold hover:underline font-medium">
+              <Link
+                to="/wrestling/signup"
+                state={{ clubSlug, redirectTo }}
+                className="text-gold hover:underline font-medium"
+              >
                 Create account
               </Link>
             </div>
           </CardContent>
         </Card>
+
+        <div className="mt-4 text-center">
+          <Link
+            to={`/wrestling/club/${clubSlug}`}
+            className="text-white/40 hover:text-white/60 text-sm"
+          >
+            ← Back to club page
+          </Link>
+        </div>
       </div>
     </div>
   );
