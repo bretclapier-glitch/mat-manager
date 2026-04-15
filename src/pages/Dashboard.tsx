@@ -51,8 +51,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (profile?.club_id) loadDashboardData(profile.club_id);
-  }, [profile]);
+    if (profile?.club_id) {
+    loadDashboardData(profile.club_id);
+  } else if (profile && !profile.club_id) {
+    // Profile loaded but no club yet — stop spinning
+    setLoading(false);
+  }
+}, [profile]);
 
   async function loadDashboardData(clubId: string) {
     setLoading(true);
