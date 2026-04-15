@@ -133,6 +133,23 @@ export default function Onboarding() {
           .eq('id', user.id);
       }
 
+      // Save message channels
+if (onboardingData.messageChannels && onboardingData.messageChannels.length > 0 && clubId) {
+  const channelsToInsert = onboardingData.messageChannels
+    .filter(c => c.name.trim())
+    .map(c => ({
+      club_id: clubId,
+      name: c.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      description: c.description || null,
+      is_private: c.isPrivate,
+    }));
+
+  if (channelsToInsert.length > 0) {
+    await supabase.from('message_channels').delete().eq('club_id', clubId);
+    await supabase.from('message_channels').insert(channelsToInsert);
+  }
+}
+      
       // Save programs
       if (onboardingData.programs && onboardingData.programs.length > 0 && clubId) {
         // Delete existing programs first to avoid duplicates
