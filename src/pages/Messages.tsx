@@ -323,15 +323,16 @@ export default function Messages() {
                     <div className="space-y-4">
                       {messages.map((msg) => {
                         const own = isOwnMessage(msg);
+                        const senderName = msg.profiles?.full_name ?? 'Unknown';
                         return (
                           <div key={msg.id} className={`flex gap-3 ${own ? 'flex-row-reverse' : ''}`}>
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${own ? 'bg-gold text-navy' : 'bg-navy text-white'}`}>
-                              {(msg.profiles?.full_name ?? 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                              {senderName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                             </div>
                             <div className={`max-w-[70%] ${own ? 'items-end' : 'items-start'} flex flex-col`}>
                               <div className={`flex items-center gap-2 mb-1 ${own ? 'flex-row-reverse' : ''}`}>
                                 <span className="text-xs font-semibold">
-                                  {own ? 'You' : (msg.profiles?.full_name ?? 'Unknown')}
+                                  {senderName}{own ? ' (You)' : ''}
                                 </span>
                                 <span className="text-xs text-muted-foreground">{formatTime(msg.created_at)}</span>
                               </div>
