@@ -72,8 +72,8 @@ export default function ClubParentDashboard() {
 
   // Load club by slug first, then load all data
   useEffect(() => {
-    if (clubSlug) loadClubAndData(clubSlug);
-  }, [clubSlug, user]);
+  if (clubSlug && user !== undefined) loadClubAndData(clubSlug);
+}, [clubSlug, user]);
 
   async function loadClubAndData(slug: string) {
     setLoading(true);
