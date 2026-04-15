@@ -45,9 +45,10 @@ type Program = {
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-// Map day abbreviations to JS getDay() values (0 = Sunday)
+// Map day names (both full and abbreviated) to JS getDay() values (0 = Sunday)
 const DAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6,
 };
 
 function generatePracticeDates(
