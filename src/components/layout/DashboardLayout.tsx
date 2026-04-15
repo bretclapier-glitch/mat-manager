@@ -16,7 +16,8 @@ import {
   Menu,
   LogOut,
   Bell,
-  ChevronDown
+  ChevronDown,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,9 +48,38 @@ const navItems = [
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { profile, loading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [clubName, setClubName] = useState('My Club');
+
+  useEffect(() => {
+    // Wait for auth to load before checking role
+    if (loading) return;
+
+    // Not logged in — redirect to login
+    if (!profile) {
+      navigate('/wrestling/login');
+      return;
+    }
+
+    // Parent trying to access admin — redirect to their club dashboard
+    if (profile.role === 'parent') {
+      if (profile.club_id) {
+        // Look up club slug and redirect
+        supabase
+          .from('clubs')
+          .select('slug')
+          .eq('id', profile.club_id)
+          .single()
+          .then(({ data }) => {
+            const slug = data?.slug ?? profile.club_id;
+            navigate(`/wrestling/club/${slug}/parent`, { replace: true });
+          });
+      } else {
+        navigate('/wrestling/login', { replace: true });
+      }
+    }
+  }, [profile, loading]);
 
   useEffect(() => {
     if (profile?.club_id) {
@@ -73,9 +103,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     navigate('/wrestling/login');
   }
 
+  // Show loading while auth is resolving or while redirecting a parent
+  if (loading || !profile || profile.role === 'parent') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -83,14 +121,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={`
         fixed top-0 left-0 z-50 h-full w-64 bg-sidebar transform transition-transform duration-200
         lg:translate-x-0
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="p-6 border-b border-sidebar-border">
             <Link to="/wrestling/dashboard" className="flex items-center gap-2">
               <Trophy className="h-8 w-8 text-gold" />
@@ -98,7 +134,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Link>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
@@ -122,19 +157,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             })}
           </nav>
 
-          {/* Club info */}
           <div className="p-4 border-t border-sidebar-border">
             <div className="px-4 py-3 rounded-lg bg-sidebar-accent">
               <p className="text-sm font-medium text-sidebar-accent-foreground">{clubName}</p>
-              <p className="text-xs text-sidebar-foreground/60 capitalize">{profile?.role ?? 'Admin'}</p>
+              <p className="text-xs text-sidebar-foreground/60 capitalize">{profile.role}</p>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="lg:pl-64">
-        {/* Top bar */}
         <header className="sticky top-0 z-30 bg-card border-b">
           <div className="flex items-center justify-between px-4 lg:px-8 h-16">
             <button
@@ -145,7 +177,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </button>
 
             <div className="flex items-center gap-4 ml-auto">
-              {/* Notifications */}
               <Popover>
                 <PopoverTrigger asChild>
                   <button className="relative p-2 hover:bg-secondary rounded-lg">
@@ -162,7 +193,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </PopoverContent>
               </Popover>
 
-              {/* Profile dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 p-2 hover:bg-secondary rounded-lg">
@@ -170,7 +200,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       <span className="text-sm font-bold text-navy">{initials}</span>
                     </div>
                     <span className="hidden md:block font-medium">
-                      {profile?.full_name ?? 'Loading...'}
+                      {profile.full_name ?? 'Loading...'}
                     </span>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </button>
@@ -196,7 +226,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="p-4 lg:p-8">
           {children}
         </main>
