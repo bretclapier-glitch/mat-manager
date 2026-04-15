@@ -2,27 +2,24 @@ import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useClubData } from "@/components/layout/ClubLayout";
 import {
-  MapPin,
   Users,
   Star,
   ArrowRight,
   Calendar,
-  Clock,
   Trophy,
-  CheckCircle,
+  Shield,
+  User,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const testimonials = [
   {
-    quote:
-      "My son has grown so much in confidence since joining. The coaches are amazing!",
+    quote: "My son has grown so much in confidence since joining. The coaches are amazing!",
     author: "Sarah M.",
     role: "Parent of Youth Wrestler",
   },
   {
-    quote:
-      "Best wrestling program in town. My daughter went from beginner to state qualifier in two years.",
+    quote: "Best wrestling program in town. My daughter went from beginner to state qualifier in two years.",
     author: "David K.",
     role: "Parent of High School Wrestler",
   },
@@ -73,7 +70,18 @@ export default function ClubHome() {
                 size="xl"
                 className="border-white/30 text-white hover:bg-white/10 hover:text-white"
               >
+                <User className="mr-2 h-5 w-5" />
                 Parent Login
+              </Button>
+            </Link>
+            <Link to="/wrestling/login">
+              <Button
+                variant="outline"
+                size="xl"
+                className="border-white/20 text-white/60 hover:bg-white/5 hover:text-white/80"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Admin Login
               </Button>
             </Link>
           </div>
@@ -132,9 +140,7 @@ export default function ClubHome() {
       {/* Testimonials */}
       <section className="py-16 bg-navy text-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-display text-center mb-12">
-            WHAT PARENTS SAY
-          </h2>
+          <h2 className="text-4xl font-display text-center mb-12">WHAT PARENTS SAY</h2>
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {testimonials.map((t, i) => (
               <Card key={i} className="bg-navy-light border-gold/20">
@@ -154,9 +160,7 @@ export default function ClubHome() {
       {/* CTA */}
       <section className="py-16 bg-gradient-to-r from-gold to-gold-light">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-display text-navy mb-4">
-            READY TO JOIN THE TEAM?
-          </h2>
+          <h2 className="text-4xl font-display text-navy mb-4">READY TO JOIN THE TEAM?</h2>
           <p className="text-navy/70 mb-8 max-w-xl mx-auto">
             Browse our programs and register your wrestler today.
           </p>
