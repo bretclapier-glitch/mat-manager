@@ -18,9 +18,12 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pick up club context passed from ClubParentLogin
-  const clubSlug = (location.state as any)?.clubSlug ?? null;
-  const redirectTo = (location.state as any)?.redirectTo ?? null;
+  // Pick up club context from query params (more reliable than state)
+  const searchParams = new URLSearchParams(location.search);
+  const clubSlug = searchParams.get('club') ?? (location.state as any)?.clubSlug ?? null;
+  const redirectTo = searchParams.get('redirectTo') 
+    ? decodeURIComponent(searchParams.get('redirectTo')!) 
+    : (location.state as any)?.redirectTo ?? null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
