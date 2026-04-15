@@ -107,8 +107,7 @@ export default function ClubParentLogin() {
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Don't have an account?{" "}
               <Link
-                to="/wrestling/signup"
-                state={{ clubSlug, redirectTo }}
+                to={`/wrestling/signup?club=${clubSlug}&redirectTo=${encodeURIComponent(redirectTo)}`}
                 className="text-gold hover:underline font-medium"
               >
                 Create account
