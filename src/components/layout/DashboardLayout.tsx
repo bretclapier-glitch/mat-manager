@@ -52,20 +52,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [clubName, setClubName] = useState('My Club');
 
-  useEffect(() => {
-    // Wait for auth to load before checking role
-    if (loading) return;
+ useEffect(() => {
+  if (loading) return;
 
-    // Not logged in — redirect to login
+  // Give auth state a moment to fully resolve
+  const timer = setTimeout(() => {
     if (!profile) {
       navigate('/wrestling/login');
       return;
     }
 
-    // Parent trying to access admin — redirect to their club dashboard
     if (profile.role === 'parent') {
       if (profile.club_id) {
-        // Look up club slug and redirect
         supabase
           .from('clubs')
           .select('slug')
@@ -79,8 +77,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         navigate('/wrestling/login', { replace: true });
       }
     }
-  }, [profile, loading]);
+  }, 500);
 
+  return () => clearTimeout(timer);
+}, [profile, loading]);
+  
   useEffect(() => {
     if (profile?.club_id) {
       supabase
