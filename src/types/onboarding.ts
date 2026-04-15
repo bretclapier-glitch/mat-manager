@@ -105,11 +105,13 @@ export const defaultOnboardingData: OnboardingData = {
     { id: '2', name: 'general', description: 'General discussion', isPrivate: false },
   ],
   registrationFields: [
-    { id: '1', label: 'Age', type: 'number', required: true },
-    { id: '2', label: 'Grade', type: 'select', required: true, options: ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
-    { id: '3', label: 'Estimated Weight (lbs)', type: 'number', required: true },
-    { id: '4', label: 'Experience Level', type: 'select', required: true, options: ['Beginner', 'Intermediate', 'Advanced', 'Competitive'] },
-    { id: '5', label: 'City/Town', type: 'text', required: false },
+    { id: '1', label: 'First Name', type: 'text', required: true },
+    { id: '2', label: 'Last Name', type: 'text', required: true },
+    { id: '3', label: 'Age', type: 'number', required: true },
+    { id: '4', label: 'Grade', type: 'select', required: true, options: ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
+    { id: '5', label: 'Estimated Weight (lbs)', type: 'number', required: true },
+    { id: '6', label: 'Experience Level', type: 'select', required: true, options: ['Beginner', 'Intermediate', 'Advanced', 'Competitive'] },
+    { id: '7', label: 'City/Town', type: 'text', required: false },
   ],
   registrationPolicies: [
     { id: '1', name: 'Release of Liability', contentType: 'text', required: true },
