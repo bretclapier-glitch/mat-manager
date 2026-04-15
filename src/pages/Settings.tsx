@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import {
   User, Lock, Bell, Globe, Shield, Loader2, Save,
-  Plus, Pencil, Trash2, Users, DollarSign, Calendar,
+  Plus, Pencil, Trash2, Users, Calendar,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,6 +44,39 @@ type Program = {
 };
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// Map day abbreviations to JS getDay() values (0 = Sunday)
+const DAY_MAP: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+function generatePracticeDates(
+  practiceDays: string[],
+  seasonStart: string,
+  seasonEnd: string
+): Date[] {
+  const dates: Date[] = [];
+  const start = new Date(seasonStart);
+  const end = new Date(seasonEnd);
+  const targetDays = practiceDays.map(d => DAY_MAP[d]).filter(d => d !== undefined);
+
+  // Iterate day by day through the season
+  const current = new Date(start);
+  while (current <= end) {
+    if (targetDays.includes(current.getDay())) {
+      dates.push(new Date(current));
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
+function buildEventDateTime(date: Date, timeStr: string): string {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const dt = new Date(date);
+  dt.setHours(hours, minutes, 0, 0);
+  return dt.toISOString();
+}
 
 export default function Settings() {
   const { profile, user } = useAuth();
@@ -157,6 +190,48 @@ export default function Settings() {
     setPDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   }
 
+  async function generateCalendarEvents(
+    programName: string,
+    practiceDays: string[],
+    seasonStart: string,
+    seasonEnd: string,
+    startTime: string,
+    endTime: string,
+    clubId: string,
+    programId: string,
+  ) {
+    if (!practiceDays.length || !seasonStart || !seasonEnd || !startTime) return 0;
+
+    const dates = generatePracticeDates(practiceDays, seasonStart, seasonEnd);
+    if (dates.length === 0) return 0;
+
+    // Delete existing auto-generated events for this program to avoid duplicates
+    await supabase
+      .from('events')
+      .delete()
+      .eq('club_id', clubId)
+      .eq('program_id', programId)
+      .eq('event_type', 'practice');
+
+    const events = dates.map(date => ({
+      title: `${programName} Practice`,
+      start_time: buildEventDateTime(date, startTime),
+      end_time: buildEventDateTime(date, endTime || startTime),
+      event_type: 'practice',
+      club_id: clubId,
+      program_id: programId,
+      location: null,
+    }));
+
+    // Insert in batches of 100 to avoid request size limits
+    const batchSize = 100;
+    for (let i = 0; i < events.length; i += batchSize) {
+      await supabase.from('events').insert(events.slice(i, i + batchSize));
+    }
+
+    return events.length;
+  }
+
   async function saveProgram() {
     if (!pName.trim() || !profile?.club_id) return;
     setSavingProgram(true);
@@ -181,14 +256,23 @@ export default function Settings() {
           .update(programData)
           .eq('id', editingProgram.id);
         if (error) throw error;
-        toast.success("Program updated successfully");
+
+        // Regenerate calendar events for updated program
+        const count = await generateCalendarEvents(
+          pName, pDays, pSeasonStart, pSeasonEnd,
+          pTime, pEndTime, profile.club_id, editingProgram.id
+        );
+        toast.success(`Program updated${count > 0 ? ` — ${count} practice events updated on calendar` : ''}`);
+
       } else {
-        const { error } = await supabase
+        const { data: newProgram, error } = await supabase
           .from('programs')
-          .insert(programData);
+          .insert(programData)
+          .select()
+          .single();
         if (error) throw error;
 
-        // Auto-create a private channel for this program
+        // Auto-create private channel
         const channelSlug = pName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         await supabase.from('message_channels').insert({
           name: channelSlug,
@@ -197,8 +281,14 @@ export default function Settings() {
           club_id: profile.club_id,
         });
 
-        toast.success("Program added and private channel created");
+        // Auto-generate calendar events
+        const count = await generateCalendarEvents(
+          pName, pDays, pSeasonStart, pSeasonEnd,
+          pTime, pEndTime, profile.club_id, newProgram.id
+        );
+        toast.success(`Program added${count > 0 ? ` — ${count} practice events added to calendar` : ' — add season dates and times to auto-generate schedule'}`);
       }
+
       setProgramDialogOpen(false);
       loadPrograms();
     } catch (err) {
@@ -209,12 +299,14 @@ export default function Settings() {
   }
 
   async function deleteProgram(id: string) {
-    if (!confirm("Are you sure you want to delete this program?")) return;
+    if (!confirm("Are you sure you want to delete this program? This will also delete all associated calendar events.")) return;
     setDeletingId(id);
     try {
+      // Delete associated events first
+      await supabase.from('events').delete().eq('program_id', id);
       const { error } = await supabase.from('programs').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Program deleted");
+      toast.success("Program and calendar events deleted");
       loadPrograms();
     } catch (err) {
       toast.error("Failed to delete program");
@@ -518,6 +610,9 @@ export default function Settings() {
                         {program.season_start && (
                           <span>Starts {new Date(program.season_start).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                         )}
+                        {program.season_end && (
+                          <span>Ends {new Date(program.season_end).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        )}
                       </div>
                     </div>
                   ))
@@ -599,6 +694,9 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="p-3 rounded-lg bg-gold/10 border border-gold/20 text-xs text-gold">
+              💡 Setting season dates + practice days will automatically populate your calendar with practice events.
             </div>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setProgramDialogOpen(false)}>
