@@ -531,12 +531,22 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Club URL Slug</Label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-muted-foreground">...vercel.app/wrestling/club/</span>
-                    <Input value={clubSlug} disabled className="opacity-60 max-w-48" />
+                  <Label>Your Public Club URL</Label>
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-gold/10 border border-gold/20">
+                    <span className="text-sm text-gold font-medium break-all">
+                      https://mat-manager.vercel.app/wrestling/club/{clubSlug}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://mat-manager.vercel.app/wrestling/club/${clubSlug}`);
+                        toast.success("URL copied to clipboard!");
+                      }}
+                      className="ml-auto flex-shrink-0 p-1.5 hover:bg-gold/20 rounded"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gold"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </button>
                   </div>
-                  <p className="text-xs text-muted-foreground">URL slug cannot be changed after setup.</p>
+                  <p className="text-xs text-muted-foreground">Share this URL with parents so they can register and access the parent portal.</p>
                 </div>
                 <Button variant="hero" onClick={saveClub} disabled={savingClub}>
                   {savingClub ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : <><Save className="h-4 w-4 mr-2" />Save Club Settings</>}
