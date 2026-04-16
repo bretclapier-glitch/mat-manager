@@ -16,6 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   User,
   Users,
   FileText,
@@ -25,6 +31,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Loader2,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -76,6 +83,15 @@ type Program = {
   club_id: string;
 };
 
+type Policy = {
+  id: string;
+  name: string;
+  contentType: 'text' | 'file';
+  textContent?: string;
+  fileName?: string;
+  required: boolean;
+};
+
 const steps = [
   { id: 1, name: "Wrestler Info", icon: User },
   { id: 2, name: "Parent Info", icon: Users },
@@ -94,50 +110,109 @@ export default function ClubRegister() {
   const [savedSlug, setSavedSlug] = useState<string | null>(null);
   const [program, setProgram] = useState<Program | null>(null);
   const [loadingProgram, setLoadingProgram] = useState(true);
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [policyAgreements, setPolicyAgreements] = useState<Record<string, boolean>>({});
+  const [hasExistingWrestler, setHasExistingWrestler] = useState(false);
+  const [autofillDialogOpen, setAutofillDialogOpen] = useState(false);
+  const [existingParentData, setExistingParentData] = useState<any>(null);
+
   const [formData, setFormData] = useState({
     usaWrestlingNumber: "",
     wrestlerFirstName: "", wrestlerLastName: "", wrestlerDOB: "", wrestlerGender: "",
-    wrestlerGrade: "", experience: "",
-    parentFirstName: "", parentLastName: "", email: "", phone: "",
+    wrestlerGrade: "",
+    parentFirstName: "", parentLastName: "", phone: "",
     address: "", city: "", state: "", zip: "",
     emergencyContact: "", emergencyPhone: "",
-    medicalConditions: "", allergies: "", medications: "",
+    medicalConditions: "",
   });
 
   const basePath = `/wrestling/club/${clubSlug}`;
 
   useEffect(() => {
     if (programId) loadProgram(programId);
+    checkExistingRegistrations();
   }, [programId]);
 
   async function loadProgram(id: string) {
     setLoadingProgram(true);
     try {
-      // Try loading by UUID first
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (uuidRegex.test(id)) {
-        const { data } = await supabase
-          .from('programs')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-        if (data) { setProgram(data as Program); setLoadingProgram(false); return; }
-      }
-
-      // Fallback: try by position/index for legacy hardcoded IDs
-      const legacyPrograms: Record<string, Partial<Program>> = {
-        "1": { name: "Youth Wrestling", price: 150 },
-        "2": { name: "Middle School", price: 200 },
-        "3": { name: "High School", price: 250 },
-        "4": { name: "Summer Camp", price: 300 },
-      };
-      if (legacyPrograms[id]) {
-        setProgram({ id, ...legacyPrograms[id], description: null, payment_type: 'one-time', season_start: null, practice_days: [], practice_time: null, practice_end_time: null, club_id: '' } as Program);
+        const { data } = await supabase.from('programs').select('*').eq('id', id).maybeSingle();
+        if (data) {
+          setProgram(data as Program);
+          // Load club's registration policies
+          await loadPolicies(data.club_id);
+          setLoadingProgram(false);
+          return;
+        }
       }
     } catch (err) {
       console.error('Error loading program:', err);
     } finally {
       setLoadingProgram(false);
+    }
+  }
+
+  async function loadPolicies(clubId: string) {
+    const { data } = await supabase
+      .from('clubs')
+      .select('registration_policies')
+      .eq('id', clubId)
+      .single();
+    if (data?.registration_policies) {
+      const p = data.registration_policies as Policy[];
+      setPolicies(p);
+      const agreements: Record<string, boolean> = {};
+      p.forEach(policy => { agreements[policy.id] = false; });
+      setPolicyAgreements(agreements);
+    }
+  }
+
+  async function checkExistingRegistrations() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Check if parent has previously registered a wrestler
+    const { data: wrestlers } = await supabase
+      .from('wrestlers')
+      .select('id, full_name')
+      .eq('parent_id', user.id)
+      .limit(1);
+
+    if (wrestlers && wrestlers.length > 0) {
+      setHasExistingWrestler(true);
+      // Load parent profile for autofill
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (profile) setExistingParentData(profile);
+    }
+  }
+
+  function handleAutofill() {
+    if (!existingParentData) return;
+    const nameParts = (existingParentData.full_name ?? '').split(' ');
+    setFormData(prev => ({
+      ...prev,
+      parentFirstName: nameParts[0] ?? '',
+      parentLastName: nameParts.slice(1).join(' ') ?? '',
+      phone: existingParentData.phone ?? '',
+      address: existingParentData.address ?? '',
+      city: existingParentData.city ?? '',
+      state: existingParentData.state ?? '',
+      zip: existingParentData.zip ?? '',
+    }));
+    setAutofillDialogOpen(false);
+  }
+
+  function goToStep2() {
+    if (hasExistingWrestler) {
+      setAutofillDialogOpen(true);
+    } else {
+      setCurrentStep(2);
     }
   }
 
@@ -159,40 +234,34 @@ export default function ClubRegister() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const allRequiredPoliciesAgreed = policies
+    .filter(p => p.required)
+    .every(p => policyAgreements[p.id]);
+
+  const canProceedFromWaivers = policies.length === 0
+    ? waiverSigned
+    : allRequiredPoliciesAgreed;
+
   async function handleComplete() {
     setSaving(true);
     setError(null);
 
     try {
-      // Find club by slug first, then try by id
       let club = null;
-      const { data: clubBySlug } = await supabase
-        .from('clubs')
-        .select('id, slug')
-        .eq('slug', clubSlug)
-        .maybeSingle();
-
-      if (clubBySlug) {
-        club = clubBySlug;
-      } else {
-        const { data: clubById } = await supabase
-          .from('clubs')
-          .select('id, slug')
-          .eq('id', clubSlug)
-          .maybeSingle();
+      const { data: clubBySlug } = await supabase.from('clubs').select('id, slug').eq('slug', clubSlug).maybeSingle();
+      if (clubBySlug) { club = clubBySlug; }
+      else {
+        const { data: clubById } = await supabase.from('clubs').select('id, slug').eq('id', clubSlug).maybeSingle();
         club = clubById;
       }
 
       if (!club) throw new Error('Club not found');
       if (club.slug) setSavedSlug(club.slug);
 
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       const parentId = user?.id ?? null;
-
       const programName = program?.name ?? 'Unknown Program';
 
-      // Create wrestler record
       const { data: wrestler, error: wrestlerError } = await supabase
         .from('wrestlers')
         .insert({
@@ -208,19 +277,15 @@ export default function ClubRegister() {
 
       if (wrestlerError) throw wrestlerError;
 
-      // Create registration record
-      const { error: regError } = await supabase
-        .from('registrations')
-        .insert({
-          wrestler_id: wrestler.id,
-          program: programName,
-          status: 'pending',
-          club_id: club.id,
-        });
-
+      const { error: regError } = await supabase.from('registrations').insert({
+        wrestler_id: wrestler.id,
+        program: programName,
+        status: 'pending',
+        club_id: club.id,
+      });
       if (regError) throw regError;
 
-      // Auto-add parent to the program's private channel
+      // Auto-add parent to program channel
       if (parentId) {
         const channelSlug = programName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         const { data: programChannel } = await supabase
@@ -230,15 +295,23 @@ export default function ClubRegister() {
           .eq('name', channelSlug)
           .eq('is_private', true)
           .maybeSingle();
-
         if (programChannel) {
-          await supabase
-            .from('channel_members')
-            .upsert(
-              { channel_id: programChannel.id, profile_id: parentId },
-              { onConflict: 'channel_id,profile_id' }
-            );
+          await supabase.from('channel_members').upsert(
+            { channel_id: programChannel.id, profile_id: parentId },
+            { onConflict: 'channel_id,profile_id' }
+          );
         }
+      }
+
+      // Save parent contact info to profile for future autofill
+      if (parentId) {
+        await supabase.from('profiles').update({
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zip: formData.zip,
+        }).eq('id', parentId);
       }
 
       setCurrentStep(5);
@@ -251,7 +324,9 @@ export default function ClubRegister() {
   }
 
   const nextStep = () => {
-    if (currentStep === 4) {
+    if (currentStep === 1) {
+      goToStep2();
+    } else if (currentStep === 4) {
       handleComplete();
     } else if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
@@ -422,15 +497,9 @@ export default function ClubRegister() {
                   <Input value={formData.parentLastName} onChange={(e) => handleInputChange("parentLastName", e.target.value)} placeholder="Last name" />
                 </div>
               </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Email *</Label>
-                  <Input type="email" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} placeholder="parent@email.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Phone *</Label>
-                  <Input type="tel" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} placeholder="(555) 123-4567" />
-                </div>
+              <div className="space-y-2">
+                <Label>Phone *</Label>
+                <Input type="tel" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} placeholder="(555) 123-4567" />
               </div>
               <div className="space-y-2">
                 <Label>Address *</Label>
@@ -478,19 +547,52 @@ export default function ClubRegister() {
               <CardDescription>Please read and agree to the following to continue</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="h-64 overflow-y-auto p-4 rounded-lg bg-secondary/50 text-sm text-muted-foreground border">
-                <h4 className="font-bold text-foreground mb-2">Assumption of Risk & Liability Waiver</h4>
-                <p className="mb-3">I acknowledge that wrestling involves physical contact and carries inherent risks of injury. I voluntarily assume all risks associated with participation in wrestling activities...</p>
-                <p className="mb-3">I hereby release, waive, and discharge the club, its coaches, volunteers, and affiliates from any and all liability, claims, demands, or causes of action arising from participation...</p>
-                <p className="mb-3">I grant permission for emergency medical treatment if needed and agree to be responsible for any associated costs...</p>
-                <p>I confirm that the wrestler is in good physical health and has no conditions that would prevent safe participation, other than those disclosed in this registration.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <Checkbox checked={waiverSigned} onCheckedChange={(c) => setWaiverSigned(c === true)} />
-                <Label className="text-sm leading-relaxed">
-                  I have read and agree to the liability waiver. I am the parent or legal guardian of the wrestler named above and have the authority to sign this waiver on their behalf.
-                </Label>
-              </div>
+              {policies.length > 0 ? (
+                // Show club's custom policies
+                policies.map(policy => (
+                  <div key={policy.id} className="space-y-3">
+                    <h4 className="font-semibold">{policy.name}</h4>
+                    {policy.contentType === 'text' && policy.textContent && (
+                      <div className="h-48 overflow-y-auto p-4 rounded-lg bg-secondary/50 text-sm text-muted-foreground border">
+                        <p className="whitespace-pre-wrap">{policy.textContent}</p>
+                      </div>
+                    )}
+                    {policy.contentType === 'file' && (
+                      <div className="p-4 rounded-lg bg-secondary/50 border text-sm text-muted-foreground">
+                        📄 {policy.fileName}
+                      </div>
+                    )}
+                    {policy.required && (
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={policyAgreements[policy.id] ?? false}
+                          onCheckedChange={(c) => setPolicyAgreements(prev => ({ ...prev, [policy.id]: c === true }))}
+                        />
+                        <Label className="text-sm leading-relaxed">
+                          I have read and agree to the {policy.name}.
+                        </Label>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                // Default waiver if no custom policies
+                <>
+                  <div className="h-64 overflow-y-auto p-4 rounded-lg bg-secondary/50 text-sm text-muted-foreground border">
+                    <h4 className="font-bold text-foreground mb-2">Assumption of Risk & Liability Waiver</h4>
+                    <p className="mb-3">I acknowledge that wrestling involves physical contact and carries inherent risks of injury. I voluntarily assume all risks associated with participation in wrestling activities...</p>
+                    <p className="mb-3">I hereby release, waive, and discharge the club, its coaches, volunteers, and affiliates from any and all liability, claims, demands, or causes of action arising from participation...</p>
+                    <p className="mb-3">I grant permission for emergency medical treatment if needed and agree to be responsible for any associated costs...</p>
+                    <p>I confirm that the wrestler is in good physical health and has no conditions that would prevent safe participation, other than those disclosed in this registration.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Checkbox checked={waiverSigned} onCheckedChange={(c) => setWaiverSigned(c === true)} />
+                    <Label className="text-sm leading-relaxed">
+                      I have read and agree to the liability waiver. I am the parent or legal guardian of the wrestler named above and have the authority to sign this waiver on their behalf.
+                    </Label>
+                  </div>
+                </>
+              )}
             </CardContent>
           </>
         )}
@@ -524,9 +626,7 @@ export default function ClubRegister() {
                 <p className="text-sm">Stripe checkout will be integrated here</p>
               </div>
               {error && (
-                <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
-                  {error}
-                </div>
+                <div className="p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">{error}</div>
               )}
             </CardContent>
           </>
@@ -539,7 +639,7 @@ export default function ClubRegister() {
             </div>
             <h2 className="text-3xl font-display mb-4">REGISTRATION COMPLETE!</h2>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              {formData.wrestlerFirstName || "Your wrestler"} has been registered for {program.name}. Check your email for confirmation details.
+              {formData.wrestlerFirstName || "Your wrestler"} has been registered for {program.name}.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link to={`/wrestling/club/${savedSlug || clubSlug}/parent`}>
@@ -561,7 +661,7 @@ export default function ClubRegister() {
             <Button
               variant="hero"
               onClick={nextStep}
-              disabled={(currentStep === 3 && !waiverSigned) || saving}
+              disabled={(currentStep === 3 && !canProceedFromWaivers) || saving}
             >
               {saving ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
@@ -571,6 +671,29 @@ export default function ClubRegister() {
           </div>
         )}
       </Card>
+
+      {/* Autofill Dialog */}
+      <Dialog open={autofillDialogOpen} onOpenChange={setAutofillDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl flex items-center gap-2">
+              <Zap className="h-5 w-5 text-gold" />
+              AUTOFILL INFO
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            We found your previous registration info. Would you like to autofill your parent/guardian details?
+          </p>
+          <div className="flex gap-3 mt-2">
+            <Button variant="outline" className="flex-1" onClick={() => { setAutofillDialogOpen(false); setCurrentStep(2); }}>
+              No, enter manually
+            </Button>
+            <Button variant="hero" className="flex-1" onClick={() => { handleAutofill(); setCurrentStep(2); }}>
+              <Zap className="h-4 w-4 mr-2" />Yes, autofill
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
