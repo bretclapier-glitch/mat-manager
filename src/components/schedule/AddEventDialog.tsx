@@ -75,8 +75,21 @@ export default function AddEventDialog({ open, onOpenChange }: AddEventDialogPro
     setSaving(true);
 
     try {
-      const startDateTime = allDay ? `${date}T00:00:00` : `${date}T${startTime || '00:00'}:00`;
-      const endDateTime = allDay ? `${date}T23:59:59` : `${date}T${endTime || startTime || '00:00'}:00`;
+      // Build datetime with local timezone offset to prevent day-shift issues
+      function toLocalISO(dateStr: string, timeStr: string): string {
+        const dt = new Date(`${dateStr}T${timeStr}`);
+        const offset = -dt.getTimezoneOffset();
+        const sign = offset >= 0 ? '+' : '-';
+        const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+        return `${dateStr}T${timeStr}:00${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
+      }
+
+      const startDateTime = allDay
+        ? toLocalISO(date, '00:00')
+        : toLocalISO(date, startTime || '00:00');
+      const endDateTime = allDay
+        ? toLocalISO(date, '23:59')
+        : toLocalISO(date, endTime || startTime || '00:00');
 
       const eventsToInsert: any[] = [];
 
