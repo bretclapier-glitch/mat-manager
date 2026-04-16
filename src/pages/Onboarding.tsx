@@ -171,7 +171,21 @@ export default function Onboarding() {
         }
       }
 
-      sessionStorage.setItem('onboardingData', JSON.stringify(onboardingData));
+sessionStorage.setItem('onboardingData', JSON.stringify(onboardingData));
+
+      // Get the club slug so we can store it for the parent URL
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        const { data: prof } = await supabase
+          .from('profiles').select('club_id').eq('id', currentUser.id).single();
+        if (prof?.club_id) {
+          const { data: clubData } = await supabase
+            .from('clubs').select('slug').eq('id', prof.club_id).single();
+          if (clubData?.slug) {
+            localStorage.setItem('clubSlug', clubData.slug);
+          }
+        }
+      }
       navigate("/wrestling/dashboard");
     } catch (err) {
       console.error('Error saving club:', err);
