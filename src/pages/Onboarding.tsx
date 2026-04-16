@@ -38,6 +38,32 @@ interface Step {
   icon: React.ElementType;
 }
 
+// Map day names to JS getDay() values
+const DAY_MAP: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6,
+};
+
+function generatePracticeDates(practiceDays: string[], seasonStart: string, seasonEnd: string): Date[] {
+  const dates: Date[] = [];
+  const start = new Date(seasonStart);
+  const end = new Date(seasonEnd);
+  const targetDays = practiceDays.map(d => DAY_MAP[d]).filter(d => d !== undefined);
+  const current = new Date(start);
+  while (current <= end) {
+    if (targetDays.includes(current.getDay())) dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
+function buildEventDateTime(date: Date, timeStr: string): string {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const dt = new Date(date);
+  dt.setHours(hours, minutes, 0, 0);
+  return dt.toISOString();
+}
+
 const baseSteps: Step[] = [
   { id: 'club-info', title: 'Club Info', icon: Trophy },
   { id: 'location', title: 'Location', icon: MapPin },
@@ -62,11 +88,9 @@ export default function Onboarding() {
   const [clubName, setClubName] = useState('');
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(defaultOnboardingData);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function saveClubToSupabase() {
     setSaving(true);
-    setSaveError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -74,113 +98,84 @@ export default function Onboarding() {
         return;
       }
 
-      // Get existing profile to find club_id
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('club_id')
-        .eq('id', user.id)
-        .single();
-
-      let clubId = existingProfile?.club_id;
-
-      const name = onboardingData.clubName || clubName || 'My Wrestling Club';
+      const name = onboardingData.clubName ?? 'My Wrestling Club';
       const slug = name
         .toLowerCase()
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]/g, '');
       const uniqueSlug = `${slug}-${user.id.slice(0, 6)}`;
 
-      const clubData = {
-        name,
-        tagline: 'Building champions on and off the mat',
-        description: onboardingData.description ?? '',
-        phone: onboardingData.phone ?? '',
-        website_url: onboardingData.website ?? '',
-        address: onboardingData.address ?? '',
-        city: onboardingData.city ?? '',
-        state: onboardingData.state ?? '',
-        zip: onboardingData.zip ?? '',
-        primary_color: onboardingData.primaryColor ?? '#d4a739',
-        secondary_color: onboardingData.secondaryColor ?? '#1a1f36',
-        selected_features: onboardingData.selectedFeatures ?? [],
-        merch_setup_type: onboardingData.merchSetupType ?? 'none',
-        merch_store_url: onboardingData.existingMerchStoreUrl ?? '',
-        enable_direct_messages: onboardingData.enableDirectMessages ?? true,
-        enable_email_notifications: onboardingData.enableEmailNotifications ?? true,
-      };
+      // Check if user already has a club
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('club_id')
+        .eq('id', user.id)
+        .single();
 
-      if (clubId) {
-        // Update existing club
+      if (existingProfile?.club_id) {
+        // Already has a club — just update it
         await supabase
           .from('clubs')
-          .update(clubData)
-          .eq('id', clubId);
+          .update({
+            name,
+            tagline: onboardingData.tagline ?? 'Building champions on and off the mat',
+          })
+          .eq('id', existingProfile.club_id);
       } else {
         // Create new club
-        const { data: newClub, error: clubError } = await supabase
+        const { data: club, error } = await supabase
           .from('clubs')
-          .insert({ ...clubData, slug: uniqueSlug })
+          .insert({
+            name,
+            slug: uniqueSlug,
+            tagline: onboardingData.tagline ?? 'Building champions on and off the mat',
+          })
           .select()
           .single();
 
-        if (clubError) throw clubError;
-        clubId = newClub.id;
-
-        // Link profile to club
-        await supabase
-          .from('profiles')
-          .update({ club_id: clubId })
-          .eq('id', user.id);
+        if (!error && club) {
+          await supabase
+            .from('profiles')
+            .update({ club_id: club.id })
+            .eq('id', user.id);
+        }
       }
 
-      // Save message channels
-if (onboardingData.messageChannels && onboardingData.messageChannels.length > 0 && clubId) {
-  const channelsToInsert = onboardingData.messageChannels
-    .filter(c => c.name.trim())
-    .map(c => ({
-      club_id: clubId,
-      name: c.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-      description: c.description || null,
-      is_private: c.isPrivate,
-    }));
-
-  if (channelsToInsert.length > 0) {
-    await supabase.from('message_channels').delete().eq('club_id', clubId);
-    await supabase.from('message_channels').insert(channelsToInsert);
-  }
-}
-      
-      // Save programs
-      if (onboardingData.programs && onboardingData.programs.length > 0 && clubId) {
-        // Delete existing programs first to avoid duplicates
-        await supabase
+      // Auto-generate calendar events for each program
+      if (clubId) {
+        const { data: savedPrograms } = await supabase
           .from('programs')
-          .delete()
+          .select('id, name, season_start, season_end, practice_days, practice_time, practice_end_time')
           .eq('club_id', clubId);
 
-        // Insert all programs
-        const programsToInsert = onboardingData.programs.map(p => ({
-          club_id: clubId,
-          name: p.name,
-          description: p.description ?? '',
-          season_start: p.seasonStart ?? null,
-          season_end: p.seasonEnd ?? null,
-          practice_days: p.practiceDays ?? [],
-          practice_time: p.practiceTime ?? null,
-          practice_end_time: p.practiceEndTime ?? null,
-          price: p.price ?? null,
-          payment_type: p.paymentType ?? 'one-time',
-          competitions: p.competitions ?? [],
-        }));
-
-        await supabase.from('programs').insert(programsToInsert);
+        if (savedPrograms && savedPrograms.length > 0) {
+          const allEvents: any[] = [];
+          for (const program of savedPrograms) {
+            if (!program.practice_days?.length || !program.season_start || !program.season_end || !program.practice_time) continue;
+            const dates = generatePracticeDates(program.practice_days, program.season_start, program.season_end);
+            for (const date of dates) {
+              allEvents.push({
+                title: `${program.name} Practice`,
+                start_time: buildEventDateTime(date, program.practice_time),
+                end_time: buildEventDateTime(date, program.practice_end_time || program.practice_time),
+                event_type: 'practice',
+                club_id: clubId,
+                program_id: program.id,
+                location: null,
+              });
+            }
+          }
+          for (let i = 0; i < allEvents.length; i += 100) {
+            await supabase.from('events').insert(allEvents.slice(i, i + 100));
+          }
+        }
       }
 
       sessionStorage.setItem('onboardingData', JSON.stringify(onboardingData));
       navigate("/wrestling/dashboard");
     } catch (err) {
       console.error('Error saving club:', err);
-      setSaveError('Something went wrong saving your data. Please try again.');
+      navigate("/wrestling/dashboard");
     } finally {
       setSaving(false);
     }
@@ -337,29 +332,18 @@ if (onboardingData.messageChannels && onboardingData.messageChannels.length > 0 
         <div className="bg-card rounded-2xl shadow-card p-8">
           {renderStepContent()}
 
-          {saveError && (
-            <div className="mt-4 p-3 rounded-lg bg-wrestling-red/10 border border-wrestling-red/20 text-wrestling-red text-sm">
-              {saveError}
-            </div>
-          )}
-
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t">
             <Button
               variant="outline"
               onClick={handleBack}
-              disabled={currentStepIndex === 0 || saving}
+              disabled={currentStepIndex === 0}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <Button variant="hero" onClick={handleNext} disabled={saving}>
-              {saving 
-                ? "Saving your club..." 
-                : currentStepIndex === steps.length - 1 
-                  ? "Complete Setup" 
-                  : "Continue"
-              }
+              {saving ? "Saving..." : currentStepIndex === steps.length - 1 ? "Complete Setup" : "Continue"}
               {!saving && <ArrowRight className="h-4 w-4 ml-2" />}
             </Button>
           </div>
